@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Minesweeper – Handshake Games</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="../../public/nav.js"></script>
+</head>
+<body>
+  <h1>Minesweeper</h1>
+
+  <div class="toolbar">
+    <button class="diff-btn active" data-diff="beginner">초급 (9×9)</button>
+    <button class="diff-btn" data-diff="intermediate">중급 (16×16)</button>
+    <button class="diff-btn" data-diff="expert">고급 (16×30)</button>
+
+    <div class="stat">💣 <span class="val" id="flags">10</span></div>
+    <div class="stat">⏱ <span class="val" id="timer">0</span>s</div>
+    <button class="btn" id="btn-new" style="padding:8px 16px;font-size:0.85rem">New Game</button>
+  </div>
+
+  <div class="board-wrap">
+    <div id="board"></div>
+    <div class="overlay" id="overlay">
+      <h2 id="overlay-title"></h2>
+      <p id="overlay-msg"></p>
+      <button class="btn" id="overlay-retry">다시 시작</button>
+    </div>
+  </div>
+
+  <p class="best-row" id="best-row"></p>
+
+  <script src="game.js"></script>
+</body>
+</html>

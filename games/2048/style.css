@@ -1,0 +1,193 @@
+/* ===== RESET & BASE ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #22263a;
+  --border: #2e3350;
+  --accent: #6c63ff;
+  --text: #e8eaf6;
+  --text-muted: #7986cb;
+  --radius: 12px;
+
+  --tile-empty: #22263a;
+  --tile-2:    #4a4480; --tile-2-text: #e8eaf6;
+  --tile-4:    #5c4db0; --tile-4-text: #e8eaf6;
+  --tile-8:    #7c3aed; --tile-8-text: #e8eaf6;
+  --tile-16:   #9333ea; --tile-16-text: #e8eaf6;
+  --tile-32:   #c026d3; --tile-32-text: #e8eaf6;
+  --tile-64:   #db2777; --tile-64-text: #e8eaf6;
+  --tile-128:  #e11d48; --tile-128-text: #fff;
+  --tile-256:  #f97316; --tile-256-text: #fff;
+  --tile-512:  #eab308; --tile-512-text: #fff;
+  --tile-1024: #84cc16; --tile-1024-text: #fff;
+  --tile-2048: #22c55e; --tile-2048-text: #fff;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 48px;
+}
+
+
+/* ===== HEADER ===== */
+.game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 480px;
+  margin-bottom: 16px;
+}
+
+.game-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #6c63ff, #22c55e);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.scores {
+  display: flex;
+  gap: 12px;
+}
+
+.score-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  text-align: center;
+  min-width: 72px;
+}
+
+.score-box .label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.score-box .value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* ===== CONTROLS ===== */
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  width: 100%;
+  max-width: 480px;
+  justify-content: flex-end;
+}
+
+.btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.btn:hover { background: var(--surface2); border-color: var(--accent); }
+
+/* ===== BOARD ===== */
+.board-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+}
+
+.board {
+  background: #181b2a;
+  border-radius: var(--radius);
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+}
+
+.cell {
+  background: var(--tile-empty);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  font-weight: 800;
+  transition: background 0.1s;
+  aspect-ratio: 1;
+}
+
+/* Tile colors */
+.cell[data-val="2"]    { background: var(--tile-2);    color: var(--tile-2-text); }
+.cell[data-val="4"]    { background: var(--tile-4);    color: var(--tile-4-text); }
+.cell[data-val="8"]    { background: var(--tile-8);    color: var(--tile-8-text); }
+.cell[data-val="16"]   { background: var(--tile-16);   color: var(--tile-16-text); }
+.cell[data-val="32"]   { background: var(--tile-32);   color: var(--tile-32-text); }
+.cell[data-val="64"]   { background: var(--tile-64);   color: var(--tile-64-text); }
+.cell[data-val="128"]  { background: var(--tile-128);  color: var(--tile-128-text); font-size: 1.3rem; }
+.cell[data-val="256"]  { background: var(--tile-256);  color: var(--tile-256-text); font-size: 1.3rem; }
+.cell[data-val="512"]  { background: var(--tile-512);  color: var(--tile-512-text); font-size: 1.3rem; }
+.cell[data-val="1024"] { background: var(--tile-1024); color: var(--tile-1024-text); font-size: 1rem; }
+.cell[data-val="2048"] { background: var(--tile-2048); color: var(--tile-2048-text); font-size: 1rem; }
+
+/* Tile pop animation */
+@keyframes pop {
+  0%   { transform: scale(0.5); opacity: 0.5; }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.cell.new { animation: pop 0.15s ease; }
+
+@keyframes merge-pop {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+.cell.merged { animation: merge-pop 0.15s ease; }
+
+/* ===== OVERLAY ===== */
+.overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(15,17,23,0.88);
+  border-radius: var(--radius);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 10;
+}
+.overlay.show { display: flex; }
+
+.overlay h2 {
+  font-size: 2rem;
+  font-weight: 800;
+}
+.overlay p { color: var(--text-muted); }
+
+/* ===== HINT ===== */
+.hint {
+  margin-top: 16px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+}

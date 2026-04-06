@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tetris – Handshake Games</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="../../public/nav.js"></script>
+</head>
+<body>
+  <h1>Tetris</h1>
+
+  <div class="game-wrap">
+    <!-- Board -->
+    <div class="overlay-wrap">
+      <canvas id="board"></canvas>
+      <div class="overlay" id="overlay">
+        <h2>Game Over</h2>
+        <p>점수: <strong id="overlay-score">0</strong></p>
+        <button class="btn" id="overlay-retry" style="width:120px">다시 시작</button>
+      </div>
+    </div>
+
+    <!-- Side Panel -->
+    <div class="side">
+      <div class="panel">
+        <div class="label">Score</div>
+        <div class="value" id="score">0</div>
+      </div>
+      <div class="panel">
+        <div class="label">Best</div>
+        <div class="value" id="best">0</div>
+      </div>
+      <div class="panel">
+        <div class="label">Level</div>
+        <div class="value" id="level">1</div>
+      </div>
+      <div class="panel">
+        <div class="label">Lines</div>
+        <div class="value" id="lines">0</div>
+      </div>
+      <div class="panel">
+        <div class="label">Next</div>
+        <canvas id="next-canvas" width="96" height="96"></canvas>
+      </div>
+      <div class="panel">
+        <div class="label">Hold (C)</div>
+        <canvas id="hold-canvas" width="96" height="96"></canvas>
+      </div>
+      <button class="btn" id="btn-new">New Game</button>
+    </div>
+  </div>
+
+  <p class="hint">
+    ← → 이동 &nbsp;|&nbsp; ↑ 회전 &nbsp;|&nbsp; ↓ 소프트 드롭<br>
+    Space 하드 드롭 &nbsp;|&nbsp; C 홀드 &nbsp;|&nbsp; P 일시정지
+  </p>
+
+  <script src="game.js"></script>
+</body>
+</html>
