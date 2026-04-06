@@ -1,0 +1,140 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d27;
+  --surface2: #22263a;
+  --border: #2e3350;
+  --accent: #6c63ff;
+  --text: #e8eaf6;
+  --text-muted: #7986cb;
+  --radius: 12px;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 48px;
+}
+
+h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 20px;
+  background: linear-gradient(135deg, #6c63ff, #34d399);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ===== HEADER ROW ===== */
+.game-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 480px;
+  margin-bottom: 12px;
+}
+
+.scores {
+  display: flex;
+  gap: 10px;
+}
+
+.score-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 14px;
+  text-align: center;
+  min-width: 72px;
+}
+.score-box .label {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.score-box .value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* ===== CONTROLS ROW ===== */
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+  width: 100%;
+  max-width: 480px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.level-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-right: auto;
+}
+.level-label span { color: var(--accent); font-weight: 700; }
+
+.btn {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+.btn:hover { background: var(--surface2); border-color: var(--accent); }
+
+/* ===== CANVAS ===== */
+.board-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 480px;
+}
+
+#board {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: #0a0c14;
+}
+
+/* ===== OVERLAY ===== */
+.overlay {
+  display: none;
+  position: absolute;
+  inset: 0;
+  background: rgba(15,17,23,0.88);
+  border-radius: var(--radius);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  z-index: 10;
+}
+.overlay.show { display: flex; }
+.overlay h2 { font-size: 1.8rem; font-weight: 800; }
+.overlay p  { color: var(--text-muted); }
+
+/* ===== HINT ===== */
+.hint {
+  margin-top: 14px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.8;
+}

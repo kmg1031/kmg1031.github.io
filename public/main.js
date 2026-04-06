@@ -16,6 +16,9 @@ const GAMES = [
   { id: 'tetris',      name: 'Tetris',      icon: '🟦', path: '../games/tetris/index.html' },
   { id: 'minesweeper', name: 'Minesweeper', icon: '💣', path: '../games/minesweeper/index.html' },
   { id: '2048',        name: '2048',        icon: '🔢', path: '../games/2048/index.html' },
+  { id: 'memory',      name: 'Memory',      icon: '🃏', path: '../games/memory/index.html' },
+  { id: 'snake',       name: 'Snake',       icon: '🐍', path: '../games/snake/index.html' },
+  { id: 'reaction',    name: 'Reaction',    icon: '⚡', path: '../games/reaction/index.html' },
 ];
 
 // ===== 카드 렌더링 =====

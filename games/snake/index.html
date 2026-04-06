@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Snake – Handshake Games</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="../../public/nav.js"></script>
+</head>
+<body>
+  <h1>Snake</h1>
+
+  <div class="game-header">
+    <div class="scores">
+      <div class="score-box">
+        <div class="label">Score</div>
+        <div class="value" id="score">0</div>
+      </div>
+      <div class="score-box">
+        <div class="label">Best</div>
+        <div class="value" id="best">0</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <span class="level-label">Level <span id="level">1</span></span>
+    <button class="btn" id="btn-new">New Game</button>
+  </div>
+
+  <div class="board-wrap">
+    <canvas id="board"></canvas>
+
+    <div class="overlay" id="overlay">
+      <h2>💀 Game Over</h2>
+      <p>점수: <strong id="overlay-score">0</strong></p>
+      <button class="btn" id="overlay-retry">다시 시작</button>
+    </div>
+  </div>
+
+  <p class="hint">
+    방향키 / WASD 이동 &nbsp;|&nbsp; P 일시정지<br>
+    벽을 통과해 반대편으로 이동합니다
+  </p>
+
+  <script src="game.js"></script>
+</body>
+</html>

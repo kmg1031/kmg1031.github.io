@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Memory – Handshake Games</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="../../public/nav.js"></script>
+</head>
+<body>
+  <h1>Memory</h1>
+
+  <div class="toolbar">
+    <button class="diff-btn active" data-diff="easy">쉬움 (4×4)</button>
+    <button class="diff-btn" data-diff="medium">보통 (4×6)</button>
+    <button class="diff-btn" data-diff="hard">어려움 (6×6)</button>
+
+    <div class="stat">🔄 <span class="val" id="moves">0</span></div>
+    <div class="stat">⏱ <span class="val" id="timer">0</span>s</div>
+    <button class="btn" id="btn-new">New Game</button>
+  </div>
+
+  <div class="board-wrap">
+    <div id="board"></div>
+
+    <div class="overlay" id="overlay">
+      <h2>🎉 클리어!</h2>
+      <p id="overlay-msg"></p>
+      <button class="btn" id="overlay-retry">다시 시작</button>
+    </div>
+  </div>
+
+  <p class="best-row" id="best-row"></p>
+
+  <script src="game.js"></script>
+</body>
+</html>
