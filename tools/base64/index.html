@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Base64 / URL Encoder</title>
+<link rel="stylesheet" href="../../public/common.css" />
+<style>
+  .container { width: 100%; max-width: 700px; }
+  .tabs {
+    display: flex; gap: 4px; margin-bottom: 16px;
+    background: var(--surface); border-radius: 12px; padding: 4px;
+    border: 1px solid var(--border);
+  }
+  .tab-btn {
+    flex: 1; padding: 10px; border: none; border-radius: 10px;
+    background: transparent; color: var(--text-muted); font-size: 0.9rem;
+    font-weight: 600; cursor: pointer; transition: all 0.2s;
+  }
+  .tab-btn.active { background: var(--accent); color: #fff; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px;
+    margin-bottom: 12px; box-shadow: var(--shadow);
+  }
+  .section-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .section-label { font-weight: 700; font-size: 0.9rem; color: var(--text-muted); }
+  .byte-info { font-size: 0.8rem; color: var(--text-muted); }
+  .text-area {
+    width: 100%; min-height: 120px; resize: vertical; padding: 14px;
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); font-family: 'Consolas', monospace; font-size: 0.9rem;
+    line-height: 1.5; outline: none;
+  }
+  .text-area:focus { border-color: var(--accent); }
+  .btn-row {
+    display: flex; gap: 8px; justify-content: center; margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+  .action-btn {
+    padding: 10px 24px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 0.9rem;
+    font-weight: 600; cursor: pointer; transition: all 0.2s;
+  }
+  .action-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .action-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .action-btn.primary:hover { opacity: 0.85; }
+  .copy-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 6px 14px; color: var(--text-muted);
+    cursor: pointer; font-size: 0.8rem; transition: all 0.2s;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: #4caf50; color: #4caf50; }
+  .error-msg { color: var(--accent2); font-size: 0.85rem; margin-top: 6px; }
+  .arrow-icon { font-size: 1.4rem; color: var(--text-muted); }
+</style>
+</head>
+<body class="page-wrap">
+<a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+<h1 class="page-title">Base64 / URL Encoder</h1>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="base64">Base64</button>
+    <button class="tab-btn" data-tab="url">URL Encoding</button>
+  </div>
+
+  <!-- Base64 Panel -->
+  <div class="panel active" id="panel-base64">
+    <div class="section">
+      <div class="section-header">
+        <span class="section-label">Plain Text</span>
+        <span>
+          <span class="byte-info" id="b64PlainSize">0 bytes</span>
+          <button class="copy-btn" data-target="b64Plain">Copy</button>
+        </span>
+      </div>
+      <textarea class="text-area" id="b64Plain" placeholder="인코딩할 텍스트 입력..."></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="action-btn primary" id="b64EncodeBtn">Encode &darr;</button>
+      <button class="action-btn primary" id="b64DecodeBtn">&uarr; Decode</button>
+    </div>
+    <div class="section">
+      <div class="section-header">
+        <span class="section-label">Base64</span>
+        <span>
+          <span class="byte-info" id="b64EncodedSize">0 bytes</span>
+          <button class="copy-btn" data-target="b64Encoded">Copy</button>
+        </span>
+      </div>
+      <textarea class="text-area" id="b64Encoded" placeholder="Base64 문자열..."></textarea>
+    </div>
+    <div class="error-msg" id="b64Error"></div>
+  </div>
+
+  <!-- URL Panel -->
+  <div class="panel" id="panel-url">
+    <div class="section">
+      <div class="section-header">
+        <span class="section-label">Plain Text</span>
+        <span>
+          <span class="byte-info" id="urlPlainSize">0 bytes</span>
+          <button class="copy-btn" data-target="urlPlain">Copy</button>
+        </span>
+      </div>
+      <textarea class="text-area" id="urlPlain" placeholder="인코딩할 텍스트 입력..."></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="action-btn primary" id="urlEncodeBtn">Encode &darr;</button>
+      <button class="action-btn primary" id="urlDecodeBtn">&uarr; Decode</button>
+    </div>
+    <div class="section">
+      <div class="section-header">
+        <span class="section-label">URL Encoded</span>
+        <span>
+          <span class="byte-info" id="urlEncodedSize">0 bytes</span>
+          <button class="copy-btn" data-target="urlEncoded">Copy</button>
+        </span>
+      </div>
+      <textarea class="text-area" id="urlEncoded" placeholder="URL 인코딩 문자열..."></textarea>
+    </div>
+    <div class="error-msg" id="urlError"></div>
+  </div>
+</div>
+
+<script>
+// Tab switching
+const tabBtns = document.querySelectorAll('.tab-btn');
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    tabBtns.forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+  });
+});
+
+// Byte size helper
+function byteSize(str) {
+  return new Blob([str]).size;
+}
+function formatSize(n) {
+  if (n < 1024) return n + ' bytes';
+  return (n / 1024).toFixed(1) + ' KB';
+}
+
+// Update sizes on input
+function bindSize(inputId, sizeId) {
+  const inp = document.getElementById(inputId);
+  const sz = document.getElementById(sizeId);
+  inp.addEventListener('input', () => { sz.textContent = formatSize(byteSize(inp.value)); });
+}
+bindSize('b64Plain', 'b64PlainSize');
+bindSize('b64Encoded', 'b64EncodedSize');
+bindSize('urlPlain', 'urlPlainSize');
+bindSize('urlEncoded', 'urlEncodedSize');
+
+// Base64
+document.getElementById('b64EncodeBtn').addEventListener('click', () => {
+  const plain = document.getElementById('b64Plain').value;
+  const err = document.getElementById('b64Error');
+  err.textContent = '';
+  try {
+    // Support Unicode
+    const encoded = btoa(unescape(encodeURIComponent(plain)));
+    document.getElementById('b64Encoded').value = encoded;
+    document.getElementById('b64EncodedSize').textContent = formatSize(byteSize(encoded));
+  } catch (e) {
+    err.textContent = 'Encode error: ' + e.message;
+  }
+});
+
+document.getElementById('b64DecodeBtn').addEventListener('click', () => {
+  const encoded = document.getElementById('b64Encoded').value.trim();
+  const err = document.getElementById('b64Error');
+  err.textContent = '';
+  try {
+    const decoded = decodeURIComponent(escape(atob(encoded)));
+    document.getElementById('b64Plain').value = decoded;
+    document.getElementById('b64PlainSize').textContent = formatSize(byteSize(decoded));
+  } catch (e) {
+    err.textContent = 'Decode error: Invalid Base64 string';
+  }
+});
+
+// URL Encode
+document.getElementById('urlEncodeBtn').addEventListener('click', () => {
+  const plain = document.getElementById('urlPlain').value;
+  const err = document.getElementById('urlError');
+  err.textContent = '';
+  try {
+    const encoded = encodeURIComponent(plain);
+    document.getElementById('urlEncoded').value = encoded;
+    document.getElementById('urlEncodedSize').textContent = formatSize(byteSize(encoded));
+  } catch (e) {
+    err.textContent = 'Encode error: ' + e.message;
+  }
+});
+
+document.getElementById('urlDecodeBtn').addEventListener('click', () => {
+  const encoded = document.getElementById('urlEncoded').value;
+  const err = document.getElementById('urlError');
+  err.textContent = '';
+  try {
+    const decoded = decodeURIComponent(encoded);
+    document.getElementById('urlPlain').value = decoded;
+    document.getElementById('urlPlainSize').textContent = formatSize(byteSize(decoded));
+  } catch (e) {
+    err.textContent = 'Decode error: Invalid URL encoded string';
+  }
+});
+
+// Copy buttons
+document.querySelectorAll('.copy-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = document.getElementById(btn.dataset.target);
+    if (!target || !target.value) return;
+    navigator.clipboard.writeText(target.value).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1200);
+    }).catch(() => {
+      target.select();
+      document.execCommand('copy');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1200);
+    });
+  });
+});
+</script>
+<script src="../../public/theme.js"></script>
+</body>
+</html>

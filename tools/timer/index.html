@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>타이머 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .display { font-size: 4rem; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 32px; letter-spacing: 2px; }
+    .mode-tabs { display: flex; gap: 8px; margin-bottom: 24px; }
+    .mode-tab { background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 8px 20px; color: var(--text-muted); font-size: 0.9rem; cursor: pointer; }
+    .mode-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .timer-inputs { display: flex; gap: 8px; margin-bottom: 24px; align-items: center; }
+    .timer-inputs input { width: 60px; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px; font-size: 1.1rem; }
+    .timer-inputs span { color: var(--text-muted); }
+    .buttons { display: flex; gap: 12px; }
+    .btn { padding: 12px 28px; border-radius: 12px; border: none; font-size: 1rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.85; }
+    .btn-start { background: var(--accent); color: #fff; }
+    .btn-stop { background: var(--accent2); color: #fff; }
+    .btn-reset { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .lap-list { margin-top: 24px; width: 100%; max-width: 360px; }
+    .lap-list div { padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>⏱️ 타이머</h1>
+
+  <div class="mode-tabs">
+    <button class="mode-tab active" data-mode="stopwatch">스톱워치</button>
+    <button class="mode-tab" data-mode="countdown">카운트다운</button>
+  </div>
+
+  <div class="timer-inputs" id="countdown-inputs" style="display:none;">
+    <input type="number" id="inp-h" value="0" min="0" max="99" />
+    <span>시</span>
+    <input type="number" id="inp-m" value="5" min="0" max="59" />
+    <span>분</span>
+    <input type="number" id="inp-s" value="0" min="0" max="59" />
+    <span>초</span>
+  </div>
+
+  <div class="display" id="display">00:00:00.0</div>
+
+  <div class="buttons">
+    <button class="btn btn-start" id="btn-start">시작</button>
+    <button class="btn btn-stop" id="btn-stop" style="display:none;">정지</button>
+    <button class="btn btn-reset" id="btn-reset">초기화</button>
+    <button class="btn btn-reset" id="btn-lap" style="display:none;">랩</button>
+  </div>
+
+  <div class="lap-list" id="lap-list"></div>
+
+  <script>
+    let mode = 'stopwatch';
+    let running = false;
+    let elapsed = 0;
+    let countdownTotal = 0;
+    let startTime = 0;
+    let rafId = null;
+    let laps = [];
+
+    const display = document.getElementById('display');
+    const btnStart = document.getElementById('btn-start');
+    const btnStop = document.getElementById('btn-stop');
+    const btnReset = document.getElementById('btn-reset');
+    const btnLap = document.getElementById('btn-lap');
+    const lapList = document.getElementById('lap-list');
+    const cdInputs = document.getElementById('countdown-inputs');
+
+    function fmt(ms) {
+      const t = Math.max(0, ms);
+      const h = Math.floor(t / 3600000);
+      const m = Math.floor((t % 3600000) / 60000);
+      const s = Math.floor((t % 60000) / 1000);
+      const ds = Math.floor((t % 1000) / 100);
+      return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${ds}`;
+    }
+
+    function tick() {
+      const now = performance.now();
+      if (mode === 'stopwatch') {
+        elapsed = now - startTime;
+        display.textContent = fmt(elapsed);
+      } else {
+        const remaining = countdownTotal - (now - startTime);
+        display.textContent = fmt(remaining);
+        if (remaining <= 0) { stop(); display.textContent = '00:00:00.0'; alert('타이머 종료!'); return; }
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    function start() {
+      if (mode === 'countdown') {
+        const h = parseInt(document.getElementById('inp-h').value) || 0;
+        const m = parseInt(document.getElementById('inp-m').value) || 0;
+        const s = parseInt(document.getElementById('inp-s').value) || 0;
+        countdownTotal = (h * 3600 + m * 60 + s) * 1000;
+        if (countdownTotal <= 0) return;
+      }
+      running = true;
+      startTime = performance.now() - (mode === 'stopwatch' ? elapsed : 0);
+      btnStart.style.display = 'none';
+      btnStop.style.display = '';
+      if (mode === 'stopwatch') btnLap.style.display = '';
+      cdInputs.style.display = 'none';
+      tick();
+    }
+
+    function stop() {
+      running = false;
+      cancelAnimationFrame(rafId);
+      if (mode === 'stopwatch') elapsed = performance.now() - startTime;
+      btnStart.style.display = '';
+      btnStop.style.display = 'none';
+      btnLap.style.display = 'none';
+      btnStart.textContent = '계속';
+    }
+
+    function reset() {
+      stop();
+      elapsed = 0;
+      laps = [];
+      lapList.innerHTML = '';
+      display.textContent = '00:00:00.0';
+      btnStart.textContent = '시작';
+      if (mode === 'countdown') cdInputs.style.display = 'flex';
+    }
+
+    btnStart.addEventListener('click', start);
+    btnStop.addEventListener('click', stop);
+    btnReset.addEventListener('click', reset);
+    btnLap.addEventListener('click', () => {
+      laps.push(elapsed);
+      const d = document.createElement('div');
+      d.innerHTML = `<span>랩 ${laps.length}</span><span>${fmt(elapsed)}</span>`;
+      lapList.prepend(d);
+    });
+
+    document.querySelectorAll('.mode-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        mode = tab.dataset.mode;
+        reset();
+        cdInputs.style.display = mode === 'countdown' ? 'flex' : 'none';
+        btnLap.style.display = 'none';
+      });
+    });
+  </script>
+</body>
+</html>

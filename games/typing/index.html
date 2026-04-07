@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Typing Test – Handshake Games</title>
+  <link rel="stylesheet" href="../../public/common.css" />
+  <style>
+    .game-container { width: 100%; max-width: 700px; }
+    .stats-bar {
+      display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 20px; text-align: center; min-width: 100px;
+    }
+    .stat-value { font-size: 1.6rem; font-weight: 800; color: var(--accent); }
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+    .word-display {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; min-height: 120px;
+      display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+      align-items: center; margin-bottom: 20px; line-height: 2;
+    }
+    .word-display .word {
+      font-size: 1.15rem; padding: 4px 8px; border-radius: 6px;
+      transition: background 0.2s, color 0.2s;
+    }
+    .word-display .word.current {
+      background: var(--accent); color: #fff; font-weight: 700;
+    }
+    .word-display .word.correct { color: #4caf50; }
+    .word-display .word.wrong { color: var(--accent2); text-decoration: line-through; }
+    .input-row { display: flex; gap: 12px; margin-bottom: 24px; }
+    .input-row input {
+      flex: 1; padding: 14px 18px; font-size: 1.1rem;
+      background: var(--surface); color: var(--text);
+      border: 2px solid var(--border); border-radius: 12px; outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-row input:focus { border-color: var(--accent); }
+    .input-row input.shake {
+      animation: shake 0.3s;
+      border-color: var(--accent2);
+    }
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      25% { transform: translateX(-6px); }
+      75% { transform: translateX(6px); }
+    }
+    .btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .lang-btns { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+    .lang-btns button {
+      padding: 6px 16px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text); cursor: pointer; font-size: 0.85rem;
+    }
+    .lang-btns button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .timer-bar {
+      height: 6px; background: var(--border); border-radius: 3px; margin-bottom: 20px; overflow: hidden;
+    }
+    .timer-bar .fill {
+      height: 100%; background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width 0.3s linear; border-radius: 3px;
+    }
+    .result-overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 100; justify-content: center; align-items: center;
+    }
+    .result-overlay.show { display: flex; }
+    .result-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 32px; text-align: center;
+      max-width: 400px; width: 90%; box-shadow: var(--shadow);
+    }
+    .result-card h2 { margin-bottom: 20px; color: var(--accent); }
+    .result-stats { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-bottom: 24px; }
+  </style>
+</head>
+<body class="page-wrap">
+  <a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+  <h1 class="page-title">Typing Test</h1>
+
+  <div class="game-container">
+    <div class="lang-btns">
+      <button class="active" data-lang="en">English</button>
+      <button data-lang="ko">한국어</button>
+    </div>
+
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-value" id="timer">60</div><div class="stat-label">초</div></div>
+      <div class="stat"><div class="stat-value" id="wpm">0</div><div class="stat-label">WPM</div></div>
+      <div class="stat"><div class="stat-value" id="accuracy">100%</div><div class="stat-label">정확도</div></div>
+      <div class="stat"><div class="stat-value" id="correct">0</div><div class="stat-label">맞음</div></div>
+      <div class="stat"><div class="stat-value" id="wrong">0</div><div class="stat-label">틀림</div></div>
+    </div>
+
+    <div class="timer-bar"><div class="fill" id="timer-fill" style="width:100%"></div></div>
+
+    <div class="word-display" id="word-display"></div>
+
+    <div class="input-row">
+      <input type="text" id="input" placeholder="여기에 입력하세요..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="start-btn">시작</button>
+      <button class="btn btn-ghost" id="restart-btn" style="display:none">다시 하기</button>
+    </div>
+  </div>
+
+  <div class="result-overlay" id="result-overlay">
+    <div class="result-card">
+      <h2>결과</h2>
+      <div class="result-stats" id="result-stats"></div>
+      <button class="btn btn-primary" onclick="restartGame()">다시 하기</button>
+    </div>
+  </div>
+
+  <script src="../../public/theme.js"></script>
+  <script>
+  (function() {
+    const WORDS = {
+      en: [
+        'the','be','to','of','and','a','in','that','have','it','for','not','on','with','he',
+        'as','you','do','at','this','but','his','by','from','they','we','say','her','she','or',
+        'an','will','my','one','all','would','there','their','what','so','up','out','if','about',
+        'who','get','which','go','me','when','make','can','like','time','no','just','him','know',
+        'take','people','into','year','your','good','some','could','them','see','other','than',
+        'then','now','look','only','come','its','over','think','also','back','after','use','two',
+        'how','our','work','first','well','way','even','new','want','because','any','these',
+        'give','day','most','us','great','between','need','large','often','around','each','under',
+        'open','still','begin','next','every','never','start','life','help','always','show',
+        'world','right','through','story','together','against','before','until','few','long',
+        'might','while','found','city','school','keep','play','very','change','small','home',
+        'move','place','house','number','name','different','turn','real','leave','group','same',
+        'point','build','program','much','system','problem','computer','music','water','power',
+        'light','carry','watch','follow','morning','learn','strong','develop','close','another',
+        'beautiful','simple','create','language','question','country','answer','above','second',
+        'important','family','hand','class','party','white','letter','sound','during','side'
+      ],
+      ko: [
+        '사과','바나나','컴퓨터','프로그램','학교','도서관','자동차','비행기','음악','영화',
+        '게임','시간','세계','사람','친구','가족','나라','도시','여행','공부',
+        '회사','기술','문화','역사','과학','수학','영어','한국어','운동','건강',
+        '음식','커피','소프트웨어','인터넷','네트워크','데이터','디자인','개발','서버','클라우드',
+        '키보드','마우스','모니터','프린터','스마트폰','태블릿','노트북','이메일','블로그','검색',
+        '알고리즘','데이터베이스','프레임워크','라이브러리','인공지능','머신러닝','딥러닝','로봇','센서','드론',
+        '교육','환경','경제','정치','사회','법률','의학','약학','심리','철학',
+        '문학','미술','조각','사진','건축','패션','요리','제과','원예','목공',
+        '축구','야구','농구','배구','테니스','수영','달리기','자전거','등산','골프'
+      ]
+    };
+
+    let lang = 'en';
+    let words = [];
+    let currentIdx = 0;
+    let correctCount = 0;
+    let wrongCount = 0;
+    let timeLeft = 60;
+    let timerInterval = null;
+    let started = false;
+    let finished = false;
+
+    const $ = id => document.getElementById(id);
+    const display = $('word-display');
+    const input = $('input');
+    const startBtn = $('start-btn');
+    const restartBtn = $('restart-btn');
+
+    function shuffle(arr) {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function generateWords() {
+      words = [];
+      while (words.length < 80) words.push(...shuffle(WORDS[lang]));
+      words = words.slice(0, 80);
+    }
+
+    function renderWords() {
+      display.innerHTML = words.map((w, i) => {
+        let cls = 'word';
+        if (i === currentIdx) cls += ' current';
+        else if (i < currentIdx) {
+          cls += w.__correct ? ' correct' : ' wrong';
+        }
+        return `<span class="${cls}">${w.__display || w}</span>`;
+      }).join('');
+      const cur = display.querySelector('.current');
+      if (cur) cur.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    function updateStats() {
+      $('correct').textContent = correctCount;
+      $('wrong').textContent = wrongCount;
+      const total = correctCount + wrongCount;
+      const acc = total === 0 ? 100 : Math.round((correctCount / total) * 100);
+      $('accuracy').textContent = acc + '%';
+      const elapsed = 60 - timeLeft;
+      const wpm = elapsed > 0 ? Math.round((correctCount / elapsed) * 60) : 0;
+      $('wpm').textContent = wpm;
+    }
+
+    function startTimer() {
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        $('timer').textContent = timeLeft;
+        $('timer-fill').style.width = (timeLeft / 60 * 100) + '%';
+        updateStats();
+        if (timeLeft <= 0) endGame();
+      }, 1000);
+    }
+
+    function endGame() {
+      clearInterval(timerInterval);
+      finished = true;
+      input.disabled = true;
+      const total = correctCount + wrongCount;
+      const acc = total === 0 ? 100 : Math.round((correctCount / total) * 100);
+      const wpm = Math.round((correctCount / 60) * 60);
+
+      // Save best WPM
+      const bestKey = 'hs_typing_best';
+      const prev = parseInt(localStorage.getItem(bestKey)) || 0;
+      if (wpm > prev) localStorage.setItem(bestKey, wpm);
+      const best = Math.max(wpm, prev);
+
+      $('result-stats').innerHTML = `
+        <div class="stat"><div class="stat-value">${wpm}</div><div class="stat-label">WPM</div></div>
+        <div class="stat"><div class="stat-value">${acc}%</div><div class="stat-label">정확도</div></div>
+        <div class="stat"><div class="stat-value">${correctCount}</div><div class="stat-label">맞음</div></div>
+        <div class="stat"><div class="stat-value">${wrongCount}</div><div class="stat-label">틀림</div></div>
+        <div class="stat"><div class="stat-value">${best}</div><div class="stat-label">최고 WPM</div></div>
+      `;
+      $('result-overlay').classList.add('show');
+    }
+
+    function restartGame() {
+      $('result-overlay').classList.remove('show');
+      resetGame();
+    }
+    window.restartGame = restartGame;
+
+    function resetGame() {
+      clearInterval(timerInterval);
+      started = false;
+      finished = false;
+      currentIdx = 0;
+      correctCount = 0;
+      wrongCount = 0;
+      timeLeft = 60;
+      input.value = '';
+      input.disabled = false;
+      $('timer').textContent = '60';
+      $('timer-fill').style.width = '100%';
+      startBtn.style.display = '';
+      restartBtn.style.display = 'none';
+      generateWords();
+      renderWords();
+      updateStats();
+    }
+
+    input.addEventListener('keydown', e => {
+      if (finished) return;
+      if (!started && e.key !== 'Tab') {
+        started = true;
+        startBtn.style.display = 'none';
+        restartBtn.style.display = '';
+        startTimer();
+      }
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        const typed = input.value.trim();
+        if (!typed) return;
+        const target = words[currentIdx];
+        const isCorrect = typed === target;
+        words[currentIdx] = { __display: target, __correct: isCorrect, toString() { return target; } };
+        if (isCorrect) correctCount++;
+        else {
+          wrongCount++;
+          input.classList.add('shake');
+          setTimeout(() => input.classList.remove('shake'), 300);
+        }
+        currentIdx++;
+        input.value = '';
+        renderWords();
+        updateStats();
+        if (currentIdx >= words.length) endGame();
+      }
+    });
+
+    startBtn.addEventListener('click', () => {
+      input.focus();
+    });
+    restartBtn.addEventListener('click', resetGame);
+
+    document.querySelectorAll('.lang-btns button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.lang-btns button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        lang = btn.dataset.lang;
+        resetGame();
+      });
+    });
+
+    resetGame();
+  })();
+  </script>
+</body>
+</html>

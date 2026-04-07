@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>글자 수 세기 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; width: 100%; max-width: 600px; margin-bottom: 20px; }
+    .stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+    .stat-value { font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+    .stat-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+    textarea { width: 100%; max-width: 600px; min-height: 300px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 16px; font-size: 1rem; line-height: 1.7; resize: vertical; outline: none; font-family: inherit; }
+    textarea:focus { border-color: var(--accent); }
+    .actions { display: flex; gap: 8px; margin-top: 12px; }
+    .actions button { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); padding: 8px 16px; font-size: 0.85rem; cursor: pointer; }
+    .actions button:hover { border-color: var(--accent); color: var(--text); }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>🔤 글자 수 세기</h1>
+
+  <div class="stats-grid" id="stats"></div>
+  <textarea id="editor" placeholder="텍스트를 입력하세요..."></textarea>
+  <div class="actions">
+    <button id="btn-copy">복사</button>
+    <button id="btn-clear">지우기</button>
+    <button id="btn-trim">앞뒤 공백 제거</button>
+  </div>
+
+  <script>
+    const editor = document.getElementById('editor');
+    const statsEl = document.getElementById('stats');
+
+    function analyze(text) {
+      const chars = text.length;
+      const charsNoSpace = text.replace(/\s/g, '').length;
+      const words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      const lines = text ? text.split('\n').length : 0;
+      const sentences = text.trim() ? (text.match(/[.!?。！？]+/g) || []).length || (text.trim() ? 1 : 0) : 0;
+      const paragraphs = text.trim() ? text.trim().split(/\n\s*\n/).filter(p => p.trim()).length : 0;
+      const bytes = new Blob([text]).size;
+
+      return [
+        { label: '글자 수', value: chars },
+        { label: '공백 제외', value: charsNoSpace },
+        { label: '단어 수', value: words },
+        { label: '줄 수', value: lines },
+        { label: '문장 수', value: sentences },
+        { label: '단락 수', value: paragraphs },
+        { label: '바이트', value: bytes },
+      ];
+    }
+
+    function render() {
+      const stats = analyze(editor.value);
+      statsEl.innerHTML = stats.map(s => `
+        <div class="stat">
+          <div class="stat-value">${s.value.toLocaleString()}</div>
+          <div class="stat-label">${s.label}</div>
+        </div>
+      `).join('');
+    }
+
+    editor.addEventListener('input', render);
+    document.getElementById('btn-copy').addEventListener('click', () => { navigator.clipboard.writeText(editor.value); });
+    document.getElementById('btn-clear').addEventListener('click', () => { editor.value = ''; render(); });
+    document.getElementById('btn-trim').addEventListener('click', () => { editor.value = editor.value.trim(); render(); });
+
+    render();
+  </script>
+</body>
+</html>

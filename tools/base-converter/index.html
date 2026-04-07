@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Base Converter</title>
+<link rel="stylesheet" href="../../public/common.css" />
+<style>
+  .container { width: 100%; max-width: 560px; }
+  .base-group {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px;
+    margin-bottom: 12px; box-shadow: var(--shadow);
+  }
+  .base-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px;
+  }
+  .base-label { font-weight: 700; font-size: 0.95rem; }
+  .base-tag {
+    font-size: 0.75rem; padding: 2px 10px; border-radius: 20px;
+    background: var(--surface2); color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .base-row { display: flex; gap: 8px; }
+  .base-input {
+    flex: 1; padding: 10px 14px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 10px;
+    color: var(--text); font-size: 1rem; font-family: 'Consolas', monospace;
+    outline: none;
+  }
+  .base-input:focus { border-color: var(--accent); }
+  .base-input.invalid { border-color: var(--accent2); }
+  .copy-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 8px 14px; color: var(--text-muted);
+    cursor: pointer; font-size: 0.85rem; transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: #4caf50; color: #4caf50; }
+  .ascii-section {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px;
+    margin-top: 12px; box-shadow: var(--shadow);
+  }
+  .ascii-label { font-weight: 700; font-size: 0.95rem; margin-bottom: 8px; }
+  .ascii-value {
+    font-family: 'Consolas', monospace; font-size: 1.1rem;
+    color: var(--accent); min-height: 1.4em;
+  }
+  .error-msg { color: var(--accent2); font-size: 0.8rem; margin-top: 4px; }
+</style>
+</head>
+<body class="page-wrap">
+<a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+<h1 class="page-title">Base Converter</h1>
+
+<div class="container">
+  <div class="base-group" data-base="2">
+    <div class="base-header"><span class="base-label">Binary</span><span class="base-tag">Base 2</span></div>
+    <div class="base-row">
+      <input class="base-input" data-base="2" placeholder="0, 1" />
+      <button class="copy-btn" data-base="2">Copy</button>
+    </div>
+  </div>
+  <div class="base-group" data-base="8">
+    <div class="base-header"><span class="base-label">Octal</span><span class="base-tag">Base 8</span></div>
+    <div class="base-row">
+      <input class="base-input" data-base="8" placeholder="0-7" />
+      <button class="copy-btn" data-base="8">Copy</button>
+    </div>
+  </div>
+  <div class="base-group" data-base="10">
+    <div class="base-header"><span class="base-label">Decimal</span><span class="base-tag">Base 10</span></div>
+    <div class="base-row">
+      <input class="base-input" data-base="10" placeholder="0-9" />
+      <button class="copy-btn" data-base="10">Copy</button>
+    </div>
+  </div>
+  <div class="base-group" data-base="16">
+    <div class="base-header"><span class="base-label">Hexadecimal</span><span class="base-tag">Base 16</span></div>
+    <div class="base-row">
+      <input class="base-input" data-base="16" placeholder="0-9, A-F" />
+      <button class="copy-btn" data-base="16">Copy</button>
+    </div>
+  </div>
+  <div class="ascii-section">
+    <div class="ascii-label">ASCII Character</div>
+    <div class="ascii-value" id="asciiVal">-</div>
+  </div>
+</div>
+
+<script>
+const inputs = document.querySelectorAll('.base-input');
+const copyBtns = document.querySelectorAll('.copy-btn');
+const asciiVal = document.getElementById('asciiVal');
+const bases = [2, 8, 10, 16];
+const validChars = {
+  2: /^[01]*$/,
+  8: /^[0-7]*$/,
+  10: /^[0-9]*$/,
+  16: /^[0-9a-fA-F]*$/
+};
+
+function getInput(base) {
+  return document.querySelector(`input.base-input[data-base="${base}"]`);
+}
+
+function convert(sourceBase, value) {
+  const str = value.trim();
+  if (!str) {
+    bases.forEach(b => { getInput(b).value = ''; getInput(b).classList.remove('invalid'); });
+    asciiVal.textContent = '-';
+    return;
+  }
+
+  if (!validChars[sourceBase].test(str)) {
+    getInput(sourceBase).classList.add('invalid');
+    return;
+  }
+  getInput(sourceBase).classList.remove('invalid');
+
+  const decimal = parseInt(str, sourceBase);
+  if (isNaN(decimal)) return;
+
+  bases.forEach(b => {
+    if (b === sourceBase) return;
+    const inp = getInput(b);
+    inp.value = decimal.toString(b).toUpperCase();
+    inp.classList.remove('invalid');
+  });
+
+  // ASCII
+  if (decimal >= 32 && decimal <= 126) {
+    asciiVal.textContent = `'${String.fromCharCode(decimal)}' (${decimal})`;
+  } else if (decimal >= 0 && decimal <= 31) {
+    const names = ['NUL','SOH','STX','ETX','EOT','ENQ','ACK','BEL','BS','TAB','LF','VT','FF','CR','SO','SI','DLE','DC1','DC2','DC3','DC4','NAK','SYN','ETB','CAN','EM','SUB','ESC','FS','GS','RS','US'];
+    asciiVal.textContent = `[${names[decimal]}] (${decimal})`;
+  } else if (decimal === 127) {
+    asciiVal.textContent = '[DEL] (127)';
+  } else {
+    asciiVal.textContent = `(${decimal}) - ASCII 범위 밖`;
+  }
+}
+
+inputs.forEach(inp => {
+  const base = parseInt(inp.dataset.base);
+  inp.addEventListener('input', () => convert(base, inp.value));
+});
+
+copyBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const base = btn.dataset.base;
+    const inp = getInput(base);
+    if (!inp.value) return;
+    navigator.clipboard.writeText(inp.value).then(() => {
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1200);
+    }).catch(() => {
+      // Fallback
+      inp.select();
+      document.execCommand('copy');
+      btn.textContent = 'Copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 1200);
+    });
+  });
+});
+</script>
+<script src="../../public/theme.js"></script>
+</body>
+</html>

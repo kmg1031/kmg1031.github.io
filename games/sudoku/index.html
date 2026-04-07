@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sudoku – Handshake Games</title>
+  <link rel="stylesheet" href="../../public/common.css" />
+  <style>
+    .game-container { width: 100%; max-width: 520px; }
+    .controls { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .controls select, .controls button {
+      padding: 8px 16px; border-radius: 10px; font-size: 0.9rem; cursor: pointer;
+    }
+    .controls select {
+      background: var(--surface); color: var(--text); border: 1px solid var(--border);
+    }
+    .info-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px; padding: 0 4px;
+    }
+    .info-bar .timer { font-size: 1.2rem; font-weight: 700; color: var(--accent); }
+    .board {
+      display: grid; grid-template-columns: repeat(9, 1fr);
+      border: 3px solid var(--accent); border-radius: 8px; overflow: hidden;
+      margin-bottom: 20px; aspect-ratio: 1;
+    }
+    .cell {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem; font-weight: 600;
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); cursor: pointer;
+      transition: background 0.15s;
+      position: relative;
+    }
+    .cell.given { color: var(--text); font-weight: 800; cursor: default; }
+    .cell.selected { background: var(--accent); color: #fff; }
+    .cell.same-num { background: rgba(108,99,255,0.15); }
+    .cell.conflict { background: rgba(255,101,132,0.25); }
+    .cell.border-right { border-right: 3px solid var(--accent); }
+    .cell.border-bottom { border-bottom: 3px solid var(--accent); }
+    .numpad {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+      max-width: 320px; margin: 0 auto 20px;
+    }
+    .numpad button {
+      padding: 14px; font-size: 1.2rem; font-weight: 700;
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: 10px; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .numpad button:hover { border-color: var(--accent); }
+    .numpad button.erase { color: var(--accent2); }
+    .btn-row { display: flex; gap: 12px; justify-content: center; }
+    .win-msg {
+      display: none; text-align: center; padding: 20px;
+      background: var(--surface); border: 1px solid var(--accent);
+      border-radius: var(--radius); margin-bottom: 16px;
+    }
+    .win-msg.show { display: block; }
+    .win-msg h2 { color: var(--accent); margin-bottom: 8px; }
+    @media (max-width: 480px) {
+      .cell { font-size: 0.9rem; }
+      .numpad button { padding: 10px; font-size: 1rem; }
+    }
+  </style>
+</head>
+<body class="page-wrap">
+  <a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+  <h1 class="page-title">Sudoku</h1>
+
+  <div class="game-container">
+    <div class="controls">
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button class="btn btn-primary" id="new-btn">New Game</button>
+    </div>
+
+    <div class="info-bar">
+      <span class="timer" id="timer">00:00</span>
+      <span id="diff-label" style="color:var(--text-muted)">Medium</span>
+    </div>
+
+    <div class="win-msg" id="win-msg">
+      <h2>Congratulations!</h2>
+      <p id="win-text"></p>
+    </div>
+
+    <div class="board" id="board"></div>
+
+    <div class="numpad" id="numpad"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-ghost" id="check-btn">Check</button>
+    </div>
+  </div>
+
+  <script src="../../public/theme.js"></script>
+  <script>
+  (function() {
+    const REMOVE_COUNT = { easy: 30, medium: 42, hard: 54 };
+    let solution = [];
+    let puzzle = [];
+    let board = [];
+    let given = [];
+    let selected = -1;
+    let seconds = 0;
+    let timerInterval = null;
+    let won = false;
+
+    const $ = id => document.getElementById(id);
+
+    // Generate a valid solved sudoku using backtracking
+    function generateSolution() {
+      const grid = Array.from({ length: 81 }, () => 0);
+      function isValid(grid, pos, num) {
+        const row = Math.floor(pos / 9), col = pos % 9;
+        for (let i = 0; i < 9; i++) {
+          if (grid[row * 9 + i] === num) return false;
+          if (grid[i * 9 + col] === num) return false;
+        }
+        const br = Math.floor(row / 3) * 3, bc = Math.floor(col / 3) * 3;
+        for (let r = br; r < br + 3; r++)
+          for (let c = bc; c < bc + 3; c++)
+            if (grid[r * 9 + c] === num) return false;
+        return true;
+      }
+      function solve(grid, pos) {
+        if (pos === 81) return true;
+        if (grid[pos] !== 0) return solve(grid, pos + 1);
+        const nums = [1,2,3,4,5,6,7,8,9].sort(() => Math.random() - 0.5);
+        for (const n of nums) {
+          if (isValid(grid, pos, n)) {
+            grid[pos] = n;
+            if (solve(grid, pos + 1)) return true;
+            grid[pos] = 0;
+          }
+        }
+        return false;
+      }
+      solve(grid, 0);
+      return grid;
+    }
+
+    function newGame() {
+      won = false;
+      $('win-msg').classList.remove('show');
+      clearInterval(timerInterval);
+      seconds = 0;
+      updateTimer();
+
+      const diff = $('difficulty').value;
+      $('diff-label').textContent = diff.charAt(0).toUpperCase() + diff.slice(1);
+
+      solution = generateSolution();
+      puzzle = [...solution];
+      const remove = REMOVE_COUNT[diff];
+
+      const indices = Array.from({ length: 81 }, (_, i) => i).sort(() => Math.random() - 0.5);
+      for (let i = 0; i < remove; i++) puzzle[indices[i]] = 0;
+
+      board = [...puzzle];
+      given = puzzle.map(v => v !== 0);
+      selected = -1;
+
+      renderBoard();
+      timerInterval = setInterval(() => { seconds++; updateTimer(); }, 1000);
+    }
+
+    function updateTimer() {
+      const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const s = String(seconds % 60).padStart(2, '0');
+      $('timer').textContent = m + ':' + s;
+    }
+
+    function getConflicts() {
+      const conflicts = new Set();
+      for (let i = 0; i < 81; i++) {
+        if (board[i] === 0) continue;
+        const row = Math.floor(i / 9), col = i % 9;
+        for (let j = 0; j < 81; j++) {
+          if (j === i || board[j] === 0) continue;
+          const r2 = Math.floor(j / 9), c2 = j % 9;
+          const sameRow = row === r2;
+          const sameCol = col === c2;
+          const sameBox = Math.floor(row / 3) === Math.floor(r2 / 3) && Math.floor(col / 3) === Math.floor(c2 / 3);
+          if ((sameRow || sameCol || sameBox) && board[i] === board[j]) {
+            conflicts.add(i);
+            conflicts.add(j);
+          }
+        }
+      }
+      return conflicts;
+    }
+
+    function renderBoard() {
+      const container = $('board');
+      container.innerHTML = '';
+      const conflicts = getConflicts();
+
+      for (let i = 0; i < 81; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        const row = Math.floor(i / 9), col = i % 9;
+
+        if (col === 2 || col === 5) cell.classList.add('border-right');
+        if (row === 2 || row === 5) cell.classList.add('border-bottom');
+        if (given[i]) cell.classList.add('given');
+        if (i === selected) cell.classList.add('selected');
+        if (conflicts.has(i) && !given[i]) cell.classList.add('conflict');
+        if (selected >= 0 && board[selected] !== 0 && board[i] === board[selected] && i !== selected) {
+          cell.classList.add('same-num');
+        }
+
+        cell.textContent = board[i] || '';
+        cell.addEventListener('click', () => {
+          if (won) return;
+          selected = i;
+          renderBoard();
+        });
+        container.appendChild(cell);
+      }
+    }
+
+    function placeNumber(num) {
+      if (selected < 0 || given[selected] || won) return;
+      board[selected] = num;
+      renderBoard();
+      checkWin();
+    }
+
+    function checkWin() {
+      if (board.some(v => v === 0)) return;
+      if (getConflicts().size > 0) return;
+      won = true;
+      clearInterval(timerInterval);
+      const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const s = String(seconds % 60).padStart(2, '0');
+      $('win-text').textContent = `${m}:${s} 에 클리어!`;
+      $('win-msg').classList.add('show');
+
+      // Save best time
+      const diff = $('difficulty').value;
+      const key = `hs_sudoku_best_${diff}`;
+      const prev = parseInt(localStorage.getItem(key)) || Infinity;
+      if (seconds < prev) localStorage.setItem(key, seconds);
+    }
+
+    // Build numpad
+    const numpad = $('numpad');
+    for (let n = 1; n <= 9; n++) {
+      const btn = document.createElement('button');
+      btn.textContent = n;
+      btn.addEventListener('click', () => placeNumber(n));
+      numpad.appendChild(btn);
+    }
+    const eraseBtn = document.createElement('button');
+    eraseBtn.textContent = 'X';
+    eraseBtn.className = 'erase';
+    eraseBtn.addEventListener('click', () => placeNumber(0));
+    numpad.appendChild(eraseBtn);
+
+    // Keyboard support
+    document.addEventListener('keydown', e => {
+      if (won) return;
+      const num = parseInt(e.key);
+      if (num >= 1 && num <= 9) placeNumber(num);
+      if (e.key === 'Backspace' || e.key === 'Delete') placeNumber(0);
+      if (e.key === 'ArrowRight' && selected < 80) { selected++; renderBoard(); }
+      if (e.key === 'ArrowLeft' && selected > 0) { selected--; renderBoard(); }
+      if (e.key === 'ArrowDown' && selected < 72) { selected += 9; renderBoard(); }
+      if (e.key === 'ArrowUp' && selected > 8) { selected -= 9; renderBoard(); }
+    });
+
+    $('new-btn').addEventListener('click', newGame);
+    $('check-btn').addEventListener('click', () => {
+      const c = getConflicts();
+      if (c.size === 0 && !board.some(v => v === 0)) {
+        checkWin();
+      } else {
+        renderBoard();
+      }
+    });
+
+    newGame();
+  })();
+  </script>
+</body>
+</html>

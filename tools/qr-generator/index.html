@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QR 생성기 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 480px; }
+    textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; color: var(--text); padding: 12px; font-size: 1rem; line-height: 1.5; resize: vertical; min-height: 80px; outline: none; font-family: inherit; margin-bottom: 16px; }
+    textarea:focus { border-color: var(--accent); }
+    .options { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .options label { font-size: 0.85rem; color: var(--text-muted); }
+    .options select, .options input { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px; font-size: 0.85rem; }
+    .qr-output { display: flex; justify-content: center; padding: 24px; background: #fff; border-radius: 12px; margin-bottom: 16px; min-height: 200px; }
+    .qr-output canvas { max-width: 100%; }
+    .buttons { display: flex; gap: 8px; }
+    .btn { flex: 1; padding: 12px; border-radius: 12px; border: none; font-size: 0.95rem; font-weight: 600; cursor: pointer; }
+    .btn-gen { background: var(--accent); color: #fff; }
+    .btn-dl { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .btn:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>📱 QR 생성기</h1>
+
+  <div class="card">
+    <textarea id="input" placeholder="URL 또는 텍스트를 입력하세요...">https://example.com</textarea>
+
+    <div class="options">
+      <div><label>크기</label><br/><select id="opt-size"><option value="5">작게</option><option value="8" selected>보통</option><option value="12">크게</option></select></div>
+      <div><label>전경색</label><br/><input type="color" id="opt-fg" value="#000000" /></div>
+      <div><label>배경색</label><br/><input type="color" id="opt-bg" value="#ffffff" /></div>
+    </div>
+
+    <div class="qr-output" id="qr-output"><canvas id="qr-canvas"></canvas></div>
+
+    <div class="buttons">
+      <button class="btn btn-gen" id="btn-gen">생성</button>
+      <button class="btn btn-dl" id="btn-dl">다운로드</button>
+    </div>
+  </div>
+
+  <script>
+    // Minimal QR Code generator (supports alphanumeric & byte mode, version 1-10)
+    // Based on the QR code specification - simplified implementation
+    const QR = (() => {
+      // Generator polynomials for error correction
+      const GF256 = {
+        exp: new Uint8Array(512),
+        log: new Uint8Array(256),
+        init() {
+          let x = 1;
+          for (let i = 0; i < 255; i++) {
+            this.exp[i] = x;
+            this.log[x] = i;
+            x = (x << 1) ^ (x & 128 ? 0x11d : 0);
+          }
+          for (let i = 255; i < 512; i++) this.exp[i] = this.exp[i - 255];
+        },
+        mul(a, b) { return a && b ? this.exp[this.log[a] + this.log[b]] : 0; }
+      };
+      GF256.init();
+
+      function polyMul(p, q) {
+        const r = new Uint8Array(p.length + q.length - 1);
+        for (let i = 0; i < p.length; i++)
+          for (let j = 0; j < q.length; j++)
+            r[i + j] ^= GF256.mul(p[i], q[j]);
+        return r;
+      }
+
+      function polyDiv(msg, gen) {
+        const out = new Uint8Array(msg);
+        for (let i = 0; i < msg.length - gen.length + 1; i++) {
+          if (out[i] === 0) continue;
+          for (let j = 1; j < gen.length; j++)
+            out[i + j] ^= GF256.mul(gen[j], out[i]);
+        }
+        return out.slice(msg.length - gen.length + 1);
+      }
+
+      function genPoly(n) {
+        let g = new Uint8Array([1]);
+        for (let i = 0; i < n; i++)
+          g = polyMul(g, new Uint8Array([1, GF256.exp[i]]));
+        return g;
+      }
+
+      // EC codewords count for version 1-10, level M
+      const EC_CODEWORDS = [0, 10, 16, 26, 18, 24, 16, 18, 22, 22, 26];
+      const DATA_CODEWORDS = [0, 16, 28, 44, 64, 86, 108, 124, 154, 182, 216];
+      const ALIGN_POS = [[], [], [6,18], [6,22], [6,26], [6,30], [6,34], [6,22,38], [6,24,42], [6,26,46], [6,28,50]];
+
+      function getVersion(dataLen) {
+        for (let v = 1; v <= 10; v++) {
+          const cap = DATA_CODEWORDS[v] - 2; // 2 bytes for mode+length
+          if (dataLen <= cap) return v;
+        }
+        return 10;
+      }
+
+      function encode(text) {
+        const data = new TextEncoder().encode(text);
+        const version = getVersion(data.length);
+        const totalData = DATA_CODEWORDS[version];
+        const ecCount = EC_CODEWORDS[version];
+        const size = version * 4 + 17;
+
+        // Build data stream
+        const bits = [];
+        function push(val, len) { for (let i = len - 1; i >= 0; i--) bits.push((val >> i) & 1); }
+
+        push(0b0100, 4); // byte mode
+        push(data.length, version <= 9 ? 8 : 16);
+        for (const b of data) push(b, 8);
+
+        // Terminator + padding
+        const totalBits = totalData * 8;
+        for (let i = 0; i < 4 && bits.length < totalBits; i++) bits.push(0);
+        while (bits.length % 8) bits.push(0);
+        const pads = [0xEC, 0x11];
+        let pi = 0;
+        while (bits.length < totalBits) { push(pads[pi], 8); pi ^= 1; }
+
+        // Convert to codewords
+        const codewords = [];
+        for (let i = 0; i < bits.length; i += 8)
+          codewords.push(bits.slice(i, i + 8).reduce((a, b) => (a << 1) | b, 0));
+
+        // Error correction
+        const gen = genPoly(ecCount);
+        const msgPoly = new Uint8Array(codewords.length + ecCount);
+        for (let i = 0; i < codewords.length; i++) msgPoly[i] = codewords[i];
+        const ec = polyDiv(msgPoly, gen);
+        const final = [...codewords, ...ec];
+
+        // Create matrix
+        const matrix = Array.from({ length: size }, () => new Int8Array(size)); // 0=unset, 1=black, -1=white
+        const reserved = Array.from({ length: size }, () => new Uint8Array(size));
+
+        function setMod(r, c, v) { matrix[r][c] = v ? 1 : -1; reserved[r][c] = 1; }
+
+        // Finder patterns
+        function finderPattern(row, col) {
+          for (let r = -1; r <= 7; r++)
+            for (let c = -1; c <= 7; c++) {
+              const rr = row + r, cc = col + c;
+              if (rr < 0 || rr >= size || cc < 0 || cc >= size) continue;
+              const inOuter = r === -1 || r === 7 || c === -1 || c === 7;
+              const inInner = r >= 2 && r <= 4 && c >= 2 && c <= 4;
+              const inBorder = r === 0 || r === 6 || c === 0 || c === 6;
+              setMod(rr, cc, !inOuter && (inBorder || inInner));
+            }
+        }
+        finderPattern(0, 0);
+        finderPattern(0, size - 7);
+        finderPattern(size - 7, 0);
+
+        // Alignment patterns
+        const alignPos = ALIGN_POS[version];
+        for (const r of alignPos) for (const c of alignPos) {
+          if (reserved[r][c]) continue;
+          for (let dr = -2; dr <= 2; dr++)
+            for (let dc = -2; dc <= 2; dc++)
+              setMod(r + dr, c + dc, Math.abs(dr) === 2 || Math.abs(dc) === 2 || (dr === 0 && dc === 0));
+        }
+
+        // Timing patterns
+        for (let i = 8; i < size - 8; i++) {
+          if (!reserved[6][i]) setMod(6, i, i % 2 === 0);
+          if (!reserved[i][6]) setMod(i, 6, i % 2 === 0);
+        }
+
+        // Dark module + reserved areas
+        setMod(size - 8, 8, true);
+
+        // Format info area reserved
+        for (let i = 0; i < 15; i++) {
+          const r1 = i < 6 ? i : i < 8 ? i + 1 : size - 15 + i;
+          const c1 = i < 8 ? size - 1 - i : i < 9 ? 15 - i : 14 - i;
+          if (!reserved[r1][8]) { reserved[r1][8] = 1; }
+          if (!reserved[8][c1]) { reserved[8][c1] = 1; }
+        }
+
+        // Place data bits
+        const allBits = [];
+        for (const cw of final) for (let i = 7; i >= 0; i--) allBits.push((cw >> i) & 1);
+
+        let bitIdx = 0;
+        for (let col = size - 1; col >= 1; col -= 2) {
+          if (col === 6) col = 5;
+          for (let row = 0; row < size; row++) {
+            for (let c = 0; c < 2; c++) {
+              const cc = col - c;
+              const rr = ((Math.floor((size - 1 - col + (col <= 6 ? 1 : 0)) / 2)) % 2 === 0)
+                ? size - 1 - row : row;
+              if (!reserved[rr][cc]) {
+                matrix[rr][cc] = (bitIdx < allBits.length && allBits[bitIdx]) ? 1 : -1;
+                bitIdx++;
+              }
+            }
+          }
+        }
+
+        // Apply mask (pattern 0: (row + col) % 2 === 0)
+        for (let r = 0; r < size; r++)
+          for (let c = 0; c < size; c++)
+            if (!reserved[r][c] || (matrix[r][c] !== 0 && !reserved[r][c]))
+              if (!reserved[r][c] && (r + c) % 2 === 0)
+                matrix[r][c] = matrix[r][c] === 1 ? -1 : 1;
+
+        // Format info (mask 0, EC level M = 0b00)
+        const formatBits = [1,0,1,0,1,0,0,0,0,0,1,0,0,1,0];
+        for (let i = 0; i < 15; i++) {
+          const v = formatBits[i] ? 1 : -1;
+          // Around top-left
+          if (i < 6) matrix[i][8] = v;
+          else if (i < 8) matrix[i + 1][8] = v;
+          else matrix[size - 15 + i][8] = v;
+
+          if (i < 8) matrix[8][size - 1 - i] = v;
+          else if (i < 9) matrix[8][15 - i] = v;
+          else matrix[8][14 - i] = v;
+        }
+
+        return { matrix, size };
+      }
+
+      return { encode };
+    })();
+
+    function renderQR(text, scale, fgColor, bgColor) {
+      const canvas = document.getElementById('qr-canvas');
+      const ctx = canvas.getContext('2d');
+
+      try {
+        const { matrix, size } = QR.encode(text);
+        const quiet = 4;
+        const totalSize = (size + quiet * 2) * scale;
+        canvas.width = totalSize;
+        canvas.height = totalSize;
+
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, totalSize, totalSize);
+
+        ctx.fillStyle = fgColor;
+        for (let r = 0; r < size; r++)
+          for (let c = 0; c < size; c++)
+            if (matrix[r][c] === 1)
+              ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+      } catch {
+        canvas.width = 200; canvas.height = 60;
+        ctx.fillStyle = bgColor;
+        ctx.fillRect(0, 0, 200, 60);
+        ctx.fillStyle = '#e53935';
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('텍스트가 너무 깁니다', 100, 35);
+      }
+    }
+
+    function generate() {
+      const text = document.getElementById('input').value || ' ';
+      const scale = parseInt(document.getElementById('opt-size').value);
+      const fg = document.getElementById('opt-fg').value;
+      const bg = document.getElementById('opt-bg').value;
+      renderQR(text, scale, fg, bg);
+    }
+
+    document.getElementById('btn-gen').addEventListener('click', generate);
+    document.getElementById('btn-dl').addEventListener('click', () => {
+      const canvas = document.getElementById('qr-canvas');
+      const a = document.createElement('a');
+      a.download = 'qrcode.png';
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+    });
+
+    generate();
+  </script>
+</body>
+</html>

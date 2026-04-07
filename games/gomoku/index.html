@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gomoku – Handshake Games</title>
+  <link rel="stylesheet" href="../../public/common.css" />
+  <style>
+    .game-container { width: 100%; max-width: 560px; }
+    .info-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px; padding: 8px 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .info-bar .turn { font-weight: 700; font-size: 1rem; }
+    .info-bar .turn .stone {
+      display: inline-block; width: 16px; height: 16px; border-radius: 50%;
+      vertical-align: middle; margin-right: 6px;
+    }
+    .info-bar .turn .stone.black { background: #111; border: 1px solid #555; }
+    .info-bar .turn .stone.white { background: #eee; border: 1px solid #aaa; }
+    .board-wrap {
+      position: relative; width: 100%; aspect-ratio: 1;
+      margin-bottom: 20px;
+    }
+    canvas { width: 100%; height: 100%; display: block; border-radius: 8px; }
+    .btn-row { display: flex; gap: 12px; justify-content: center; }
+    .overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 100; justify-content: center; align-items: center;
+    }
+    .overlay.show { display: flex; }
+    .overlay-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 32px; text-align: center;
+      box-shadow: var(--shadow); max-width: 360px; width: 90%;
+    }
+    .overlay-card h2 { color: var(--accent); margin-bottom: 16px; font-size: 1.5rem; }
+  </style>
+</head>
+<body class="page-wrap">
+  <a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+  <h1 class="page-title">Gomoku</h1>
+
+  <div class="game-container">
+    <div class="info-bar">
+      <div class="turn" id="turn-info">
+        <span class="stone black"></span> Your turn (Black)
+      </div>
+      <span style="color:var(--text-muted);font-size:0.85rem">vs AI</span>
+    </div>
+
+    <div class="board-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="newGame()">New Game</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-card">
+      <h2 id="result-text"></h2>
+      <button class="btn btn-primary" onclick="newGame()">다시 하기</button>
+    </div>
+  </div>
+
+  <script src="../../public/theme.js"></script>
+  <script>
+  (function() {
+    const SIZE = 15;
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    let grid, turn, gameOver, winLine;
+    // 0=empty, 1=black(player), 2=white(AI)
+
+    function newGame() {
+      grid = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+      turn = 1;
+      gameOver = false;
+      winLine = null;
+      document.getElementById('overlay').classList.remove('show');
+      updateTurnInfo();
+      draw();
+    }
+    window.newGame = newGame;
+
+    function updateTurnInfo() {
+      const el = document.getElementById('turn-info');
+      if (turn === 1) {
+        el.innerHTML = '<span class="stone black"></span> Your turn (Black)';
+      } else {
+        el.innerHTML = '<span class="stone white"></span> AI thinking...';
+      }
+    }
+
+    function resizeCanvas() {
+      const wrap = canvas.parentElement;
+      const w = wrap.clientWidth;
+      canvas.width = w * window.devicePixelRatio;
+      canvas.height = w * window.devicePixelRatio;
+      canvas.style.width = w + 'px';
+      canvas.style.height = w + 'px';
+      draw();
+    }
+
+    function draw() {
+      const w = canvas.width;
+      const pad = w * 0.04;
+      const cellSize = (w - 2 * pad) / (SIZE - 1);
+      ctx.clearRect(0, 0, w, w);
+
+      // Board background
+      ctx.fillStyle = '#c8a86e';
+      ctx.fillRect(0, 0, w, w);
+
+      // Grid lines
+      ctx.strokeStyle = '#6b5a3e';
+      ctx.lineWidth = Math.max(1, w / 600);
+      for (let i = 0; i < SIZE; i++) {
+        ctx.beginPath();
+        ctx.moveTo(pad + i * cellSize, pad);
+        ctx.lineTo(pad + i * cellSize, pad + (SIZE - 1) * cellSize);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(pad, pad + i * cellSize);
+        ctx.lineTo(pad + (SIZE - 1) * cellSize, pad + i * cellSize);
+        ctx.stroke();
+      }
+
+      // Star points
+      const stars = [3, 7, 11];
+      ctx.fillStyle = '#6b5a3e';
+      for (const r of stars) for (const c of stars) {
+        ctx.beginPath();
+        ctx.arc(pad + c * cellSize, pad + r * cellSize, cellSize * 0.12, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Stones
+      const stoneR = cellSize * 0.42;
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (grid[r][c] === 0) continue;
+          const x = pad + c * cellSize;
+          const y = pad + r * cellSize;
+          ctx.beginPath();
+          ctx.arc(x, y, stoneR, 0, Math.PI * 2);
+          if (grid[r][c] === 1) {
+            const g = ctx.createRadialGradient(x - stoneR * 0.3, y - stoneR * 0.3, stoneR * 0.1, x, y, stoneR);
+            g.addColorStop(0, '#444');
+            g.addColorStop(1, '#111');
+            ctx.fillStyle = g;
+          } else {
+            const g = ctx.createRadialGradient(x - stoneR * 0.3, y - stoneR * 0.3, stoneR * 0.1, x, y, stoneR);
+            g.addColorStop(0, '#fff');
+            g.addColorStop(1, '#ccc');
+            ctx.fillStyle = g;
+          }
+          ctx.fill();
+          ctx.strokeStyle = grid[r][c] === 1 ? '#000' : '#999';
+          ctx.lineWidth = Math.max(1, w / 800);
+          ctx.stroke();
+        }
+      }
+
+      // Win line
+      if (winLine) {
+        ctx.strokeStyle = '#ff6584';
+        ctx.lineWidth = Math.max(3, w / 150);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(pad + winLine[0].c * cellSize, pad + winLine[0].r * cellSize);
+        ctx.lineTo(pad + winLine[winLine.length - 1].c * cellSize, pad + winLine[winLine.length - 1].r * cellSize);
+        ctx.stroke();
+      }
+    }
+
+    canvas.addEventListener('click', e => {
+      if (gameOver || turn !== 1) return;
+      const rect = canvas.getBoundingClientRect();
+      const scale = canvas.width / rect.width;
+      const mx = (e.clientX - rect.left) * scale;
+      const my = (e.clientY - rect.top) * scale;
+      const w = canvas.width;
+      const pad = w * 0.04;
+      const cellSize = (w - 2 * pad) / (SIZE - 1);
+
+      const col = Math.round((mx - pad) / cellSize);
+      const row = Math.round((my - pad) / cellSize);
+      if (row < 0 || row >= SIZE || col < 0 || col >= SIZE) return;
+      if (grid[row][col] !== 0) return;
+
+      grid[row][col] = 1;
+      draw();
+
+      if (checkWin(row, col, 1)) {
+        gameOver = true;
+        draw();
+        setTimeout(() => showResult('You Win!'), 300);
+        return;
+      }
+
+      if (isBoardFull()) {
+        gameOver = true;
+        setTimeout(() => showResult('Draw!'), 300);
+        return;
+      }
+
+      turn = 2;
+      updateTurnInfo();
+      setTimeout(aiMove, 200);
+    });
+
+    function isBoardFull() {
+      return grid.every(row => row.every(c => c !== 0));
+    }
+
+    function showResult(text) {
+      document.getElementById('result-text').textContent = text;
+      document.getElementById('overlay').classList.add('show');
+    }
+
+    const DIRS = [[0,1],[1,0],[1,1],[1,-1]];
+
+    function checkWin(r, c, player) {
+      for (const [dr, dc] of DIRS) {
+        const line = [{r, c}];
+        for (let d = 1; d < 5; d++) {
+          const nr = r + dr * d, nc = c + dc * d;
+          if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE || grid[nr][nc] !== player) break;
+          line.push({r: nr, c: nc});
+        }
+        for (let d = 1; d < 5; d++) {
+          const nr = r - dr * d, nc = c - dc * d;
+          if (nr < 0 || nr >= SIZE || nc < 0 || nc >= SIZE || grid[nr][nc] !== player) break;
+          line.unshift({r: nr, c: nc});
+        }
+        if (line.length >= 5) {
+          winLine = line;
+          draw();
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // Simple AI: evaluate positions with scoring
+    function aiMove() {
+      if (gameOver) return;
+      let bestScore = -Infinity;
+      let bestMoves = [];
+
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (grid[r][c] !== 0) continue;
+          // Only consider cells near existing stones
+          if (!hasNeighbor(r, c, 2)) continue;
+          const score = evaluatePos(r, c);
+          if (score > bestScore) {
+            bestScore = score;
+            bestMoves = [{r, c}];
+          } else if (score === bestScore) {
+            bestMoves.push({r, c});
+          }
+        }
+      }
+
+      if (bestMoves.length === 0) {
+        // First move or no neighbors: play near center
+        const center = Math.floor(SIZE / 2);
+        if (grid[center][center] === 0) bestMoves = [{r: center, c: center}];
+        else {
+          for (let r = 0; r < SIZE; r++)
+            for (let c = 0; c < SIZE; c++)
+              if (grid[r][c] === 0) bestMoves.push({r, c});
+        }
+      }
+
+      const move = bestMoves[Math.floor(Math.random() * bestMoves.length)];
+      grid[move.r][move.c] = 2;
+      draw();
+
+      if (checkWin(move.r, move.c, 2)) {
+        gameOver = true;
+        draw();
+        setTimeout(() => showResult('AI Wins!'), 300);
+        return;
+      }
+
+      if (isBoardFull()) {
+        gameOver = true;
+        setTimeout(() => showResult('Draw!'), 300);
+        return;
+      }
+
+      turn = 1;
+      updateTurnInfo();
+    }
+
+    function hasNeighbor(r, c, dist) {
+      for (let dr = -dist; dr <= dist; dr++)
+        for (let dc = -dist; dc <= dist; dc++) {
+          if (dr === 0 && dc === 0) continue;
+          const nr = r + dr, nc = c + dc;
+          if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && grid[nr][nc] !== 0) return true;
+        }
+      return false;
+    }
+
+    function evaluatePos(r, c) {
+      let score = 0;
+      // Score for AI (offensive) and player (defensive)
+      score += evalForPlayer(r, c, 2) * 1.1; // slight offensive bias
+      score += evalForPlayer(r, c, 1);
+      return score;
+    }
+
+    function evalForPlayer(r, c, player) {
+      let score = 0;
+      grid[r][c] = player;
+      for (const [dr, dc] of DIRS) {
+        const { count, open } = countLine(r, c, dr, dc, player);
+        if (count >= 5) score += 100000;
+        else if (count === 4 && open === 2) score += 10000;
+        else if (count === 4 && open === 1) score += 5000;
+        else if (count === 3 && open === 2) score += 3000;
+        else if (count === 3 && open === 1) score += 500;
+        else if (count === 2 && open === 2) score += 200;
+        else if (count === 2 && open === 1) score += 50;
+        else if (count === 1 && open === 2) score += 10;
+      }
+      grid[r][c] = 0;
+      return score;
+    }
+
+    function countLine(r, c, dr, dc, player) {
+      let count = 1, open = 0;
+      // Forward
+      let nr = r + dr, nc = c + dc;
+      while (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && grid[nr][nc] === player) {
+        count++; nr += dr; nc += dc;
+      }
+      if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && grid[nr][nc] === 0) open++;
+      // Backward
+      nr = r - dr; nc = c - dc;
+      while (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && grid[nr][nc] === player) {
+        count++; nr -= dr; nc -= dc;
+      }
+      if (nr >= 0 && nr < SIZE && nc >= 0 && nc < SIZE && grid[nr][nc] === 0) open++;
+      return { count, open };
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+    newGame();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Flappy Bird – Handshake Games</title>
+  <link rel="stylesheet" href="../../public/common.css" />
+  <style>
+    canvas { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); cursor: pointer; }
+    .game-container { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+    .hud { display: flex; gap: 32px; font-size: 1.1rem; font-weight: 600; }
+    .hud span { color: var(--text-muted); }
+    .hud strong { color: var(--accent); }
+    .canvas-wrap { position: relative; }
+    .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15,17,23,0.88); display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: var(--radius); gap: 16px; }
+    .overlay h2 { font-size: 2rem; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .overlay p { color: var(--text-muted); font-size: 1.1rem; }
+    .hint { color: var(--text-muted); font-size: 0.85rem; text-align: center; margin-top: 8px; }
+  </style>
+</head>
+<body class="page-wrap">
+  <a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+  <h1 class="page-title">Flappy Bird</h1>
+
+  <div class="game-container">
+    <div class="hud">
+      <div><span>Score </span><strong id="score">0</strong></div>
+      <div><span>Best </span><strong id="best">0</strong></div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="c" width="320" height="480"></canvas>
+      <div class="overlay" id="overlay">
+        <h2 id="ol-title">Flappy Bird</h2>
+        <p id="ol-msg">Click, tap, or press Space to flap</p>
+        <button class="btn btn-primary" id="ol-btn">Start</button>
+      </div>
+    </div>
+    <p class="hint">Space / Click / Tap to flap</p>
+  </div>
+
+  <script>
+  (function() {
+    const canvas = document.getElementById('c');
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    const scoreEl = document.getElementById('score');
+    const bestEl = document.getElementById('best');
+    const overlay = document.getElementById('overlay');
+    const olTitle = document.getElementById('ol-title');
+    const olMsg = document.getElementById('ol-msg');
+    const olBtn = document.getElementById('ol-btn');
+    const BEST_KEY = 'hs_flappy_best';
+
+    let best = parseInt(localStorage.getItem(BEST_KEY)) || 0;
+    bestEl.textContent = best;
+
+    const GRAVITY = 0.45;
+    const FLAP = -7;
+    const PIPE_W = 52;
+    const GAP = 130;
+    const PIPE_SPEED = 2.5;
+    const BIRD_R = 14;
+    const GROUND_H = 60;
+
+    let bird, pipes, score, running, frameCount;
+
+    function init() {
+      bird = { x: 80, y: H / 2, vy: 0, r: BIRD_R };
+      pipes = [];
+      score = 0;
+      frameCount = 0;
+      scoreEl.textContent = 0;
+    }
+
+    function flap() {
+      bird.vy = FLAP;
+    }
+
+    function spawnPipe() {
+      let minY = 80;
+      let maxY = H - GROUND_H - GAP - 80;
+      let topH = minY + Math.random() * (maxY - minY);
+      pipes.push({ x: W, topH: topH, scored: false });
+    }
+
+    function update() {
+      frameCount++;
+
+      // Spawn pipes
+      if (frameCount % 90 === 0) spawnPipe();
+
+      // Bird physics
+      bird.vy += GRAVITY;
+      bird.y += bird.vy;
+
+      // Ground / ceiling
+      if (bird.y + bird.r > H - GROUND_H) {
+        die();
+        return;
+      }
+      if (bird.y - bird.r < 0) {
+        bird.y = bird.r;
+        bird.vy = 0;
+      }
+
+      // Pipes
+      for (let p of pipes) {
+        p.x -= PIPE_SPEED;
+
+        // Collision
+        if (bird.x + bird.r > p.x && bird.x - bird.r < p.x + PIPE_W) {
+          if (bird.y - bird.r < p.topH || bird.y + bird.r > p.topH + GAP) {
+            die();
+            return;
+          }
+        }
+
+        // Score
+        if (!p.scored && p.x + PIPE_W < bird.x) {
+          p.scored = true;
+          score++;
+          scoreEl.textContent = score;
+        }
+      }
+
+      // Remove off-screen pipes
+      pipes = pipes.filter(p => p.x + PIPE_W > -10);
+    }
+
+    function die() {
+      running = false;
+      if (score > best) {
+        best = score;
+        localStorage.setItem(BEST_KEY, best);
+        bestEl.textContent = best;
+      }
+      olTitle.textContent = 'Game Over';
+      olMsg.textContent = `Score: ${score}` + (score >= best && score > 0 ? ' (New Best!)' : '');
+      olBtn.textContent = 'Retry';
+      overlay.style.display = 'flex';
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+
+      // Background gradient
+      let grad = ctx.createLinearGradient(0, 0, 0, H - GROUND_H);
+      grad.addColorStop(0, '#1a1d27');
+      grad.addColorStop(1, '#0f1117');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H - GROUND_H);
+
+      // Pipes
+      let accent = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#6c63ff';
+      for (let p of pipes) {
+        // Top pipe
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.roundRect(p.x, 0, PIPE_W, p.topH, [0, 0, 8, 8]);
+        ctx.fill();
+        // Pipe cap top
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.roundRect(p.x - 4, p.topH - 20, PIPE_W + 8, 20, [0, 0, 6, 6]);
+        ctx.fill();
+
+        // Bottom pipe
+        let bottomY = p.topH + GAP;
+        ctx.fillStyle = accent;
+        ctx.beginPath();
+        ctx.roundRect(p.x, bottomY, PIPE_W, H - GROUND_H - bottomY, [8, 8, 0, 0]);
+        ctx.fill();
+        // Pipe cap bottom
+        ctx.beginPath();
+        ctx.roundRect(p.x - 4, bottomY, PIPE_W + 8, 20, [6, 6, 0, 0]);
+        ctx.fill();
+      }
+
+      // Ground
+      ctx.fillStyle = '#22263a';
+      ctx.fillRect(0, H - GROUND_H, W, GROUND_H);
+      ctx.fillStyle = '#2e3350';
+      ctx.fillRect(0, H - GROUND_H, W, 3);
+
+      // Bird
+      ctx.save();
+      ctx.translate(bird.x, bird.y);
+      let angle = Math.min(Math.max(bird.vy * 3, -30), 70) * Math.PI / 180;
+      ctx.rotate(angle);
+
+      // Body
+      ctx.fillStyle = '#f7971e';
+      ctx.beginPath();
+      ctx.ellipse(0, 0, bird.r, bird.r * 0.85, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Wing
+      ctx.fillStyle = '#ff6584';
+      ctx.beginPath();
+      ctx.ellipse(-4, 2, 8, 5, -0.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Eye
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(6, -4, 5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#000';
+      ctx.beginPath();
+      ctx.arc(7, -4, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Beak
+      ctx.fillStyle = '#ff5252';
+      ctx.beginPath();
+      ctx.moveTo(12, -1);
+      ctx.lineTo(20, 2);
+      ctx.lineTo(12, 5);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.restore();
+
+      // Score display on canvas
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
+      ctx.font = 'bold 64px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(score, W / 2, 80);
+    }
+
+    function loop() {
+      if (!running) return;
+      update();
+      draw();
+      if (running) requestAnimationFrame(loop);
+    }
+
+    function start() {
+      overlay.style.display = 'none';
+      running = true;
+      loop();
+    }
+
+    // Input handlers
+    function handleFlap(e) {
+      if (!running && overlay.style.display === 'flex') {
+        init();
+        start();
+        flap();
+        return;
+      }
+      if (running) flap();
+    }
+
+    canvas.addEventListener('click', handleFlap);
+    canvas.addEventListener('touchstart', e => { e.preventDefault(); handleFlap(); }, { passive: false });
+    window.addEventListener('keydown', e => {
+      if (e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        handleFlap();
+      }
+    });
+    olBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      init();
+      start();
+      setTimeout(flap, 50);
+    });
+
+    init();
+    draw();
+  })();
+  </script>
+  <script src="../../public/theme.js"></script>
+</body>
+</html>

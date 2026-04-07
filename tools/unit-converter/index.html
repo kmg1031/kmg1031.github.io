@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>단위 변환기 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 440px; }
+    .category-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+    .cat-tab { background: var(--bg); border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; color: var(--text-muted); font-size: 0.8rem; cursor: pointer; }
+    .cat-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 12px; font-size: 1.1rem; outline: none; }
+    .row input:focus { border-color: var(--accent); }
+    .row select { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 12px; font-size: 0.9rem; min-width: 100px; }
+    .swap-btn { background: none; border: 1px solid var(--border); border-radius: 50%; width: 36px; height: 36px; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; align-self: center; }
+    .swap-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .result-text { text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>📐 단위 변환기</h1>
+
+  <div class="card">
+    <div class="category-tabs" id="cats"></div>
+    <div class="row">
+      <input type="number" id="inp-from" value="1" />
+      <select id="sel-from"></select>
+    </div>
+    <div style="text-align:center;"><button class="swap-btn" id="btn-swap">⇅</button></div>
+    <div class="row">
+      <input type="number" id="inp-to" readonly />
+      <select id="sel-to"></select>
+    </div>
+    <div class="result-text" id="result-text"></div>
+  </div>
+
+  <script>
+    const UNITS = {
+      '길이': { mm:0.001, cm:0.01, m:1, km:1000, in:0.0254, ft:0.3048, yd:0.9144, mi:1609.344 },
+      '무게': { mg:0.001, g:1, kg:1000, t:1e6, oz:28.3495, lb:453.592 },
+      '부피': { mL:0.001, L:1, 'US gal':3.78541, 'US qt':0.946353, 'US cup':0.236588, 'US fl oz':0.0295735 },
+      '온도': { '°C':'c', '°F':'f', 'K':'k' },
+      '속도': { 'm/s':1, 'km/h':0.277778, 'mph':0.44704, 'knot':0.514444 },
+      '면적': { 'mm²':1e-6, 'cm²':1e-4, 'm²':1, 'km²':1e6, ha:1e4, 'ft²':0.092903, 'ac':4046.86 },
+      '데이터': { B:1, KB:1024, MB:1048576, GB:1073741824, TB:1099511627776 },
+      '시간': { ms:0.001, s:1, min:60, h:3600, day:86400, week:604800 }
+    };
+
+    let cat = '길이';
+    const catsEl = document.getElementById('cats');
+    const selFrom = document.getElementById('sel-from');
+    const selTo = document.getElementById('sel-to');
+    const inpFrom = document.getElementById('inp-from');
+    const inpTo = document.getElementById('inp-to');
+    const resultText = document.getElementById('result-text');
+
+    function renderCats() {
+      catsEl.innerHTML = '';
+      Object.keys(UNITS).forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'cat-tab' + (c === cat ? ' active' : '');
+        btn.textContent = c;
+        btn.addEventListener('click', () => { cat = c; renderCats(); renderSelects(); convert(); });
+        catsEl.appendChild(btn);
+      });
+    }
+
+    function renderSelects() {
+      const units = Object.keys(UNITS[cat]);
+      [selFrom, selTo].forEach((sel, i) => {
+        sel.innerHTML = '';
+        units.forEach((u, j) => {
+          const opt = document.createElement('option');
+          opt.value = u; opt.textContent = u;
+          sel.appendChild(opt);
+        });
+        sel.selectedIndex = i === 0 ? 0 : Math.min(1, units.length - 1);
+      });
+    }
+
+    function convert() {
+      const from = selFrom.value, to = selTo.value, val = parseFloat(inpFrom.value) || 0;
+      let result;
+
+      if (cat === '온도') {
+        let celsius;
+        if (from === '°C') celsius = val;
+        else if (from === '°F') celsius = (val - 32) * 5/9;
+        else celsius = val - 273.15;
+
+        if (to === '°C') result = celsius;
+        else if (to === '°F') result = celsius * 9/5 + 32;
+        else result = celsius + 273.15;
+      } else {
+        const base = UNITS[cat];
+        result = val * base[from] / base[to];
+      }
+
+      const rounded = Math.round(result * 1e10) / 1e10;
+      inpTo.value = rounded;
+      resultText.textContent = `${val} ${from} = ${rounded} ${to}`;
+    }
+
+    inpFrom.addEventListener('input', convert);
+    selFrom.addEventListener('change', convert);
+    selTo.addEventListener('change', convert);
+
+    document.getElementById('btn-swap').addEventListener('click', () => {
+      const tmp = selFrom.value;
+      selFrom.value = selTo.value;
+      selTo.value = tmp;
+      convert();
+    });
+
+    renderCats();
+    renderSelects();
+    convert();
+  </script>
+</body>
+</html>

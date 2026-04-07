@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>환율 계산기 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 8px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .notice { color: var(--text-muted); font-size: 0.8rem; margin-bottom: 24px; text-align: center; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 440px; }
+    .row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 12px; font-size: 1.1rem; outline: none; }
+    .row input:focus { border-color: var(--accent); }
+    .row select { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; color: var(--text); padding: 12px; font-size: 0.9rem; min-width: 90px; }
+    .swap-btn { background: none; border: 1px solid var(--border); border-radius: 50%; width: 36px; height: 36px; color: var(--text-muted); font-size: 1.2rem; cursor: pointer; display: block; margin: 0 auto 12px; }
+    .swap-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .rate-info { text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 12px; }
+    .edit-section { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 16px; }
+    .edit-section h3 { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px; }
+    .rate-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.85rem; }
+    .rate-row input { width: 100px; text-align: right; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 4px 8px; font-size: 0.85rem; }
+    .btn-reset-rates { margin-top: 8px; background: none; border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); padding: 6px 14px; font-size: 0.8rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>💱 환율 계산기</h1>
+  <p class="notice">오프라인 모드: 기본 환율은 참고용이며 직접 수정 가능합니다.</p>
+
+  <div class="card">
+    <div class="row">
+      <input type="number" id="inp-from" value="1" />
+      <select id="sel-from"></select>
+    </div>
+    <button class="swap-btn" id="btn-swap">⇅</button>
+    <div class="row">
+      <input type="number" id="inp-to" readonly />
+      <select id="sel-to"></select>
+    </div>
+    <div class="rate-info" id="rate-info"></div>
+
+    <div class="edit-section">
+      <h3>환율 편집 (1 USD 기준)</h3>
+      <div id="rate-list"></div>
+      <button class="btn-reset-rates" id="btn-reset">기본값 복원</button>
+    </div>
+  </div>
+
+  <script>
+    const DEFAULT_RATES = {
+      USD: 1,
+      KRW: 1380,
+      JPY: 150,
+      EUR: 0.92,
+      GBP: 0.79,
+      CNY: 7.25,
+      CAD: 1.36,
+      AUD: 1.53,
+      CHF: 0.88
+    };
+
+    const KEY = 'hs_exchange_rates';
+    let rates = JSON.parse(localStorage.getItem(KEY)) || { ...DEFAULT_RATES };
+
+    const selFrom = document.getElementById('sel-from');
+    const selTo = document.getElementById('sel-to');
+    const inpFrom = document.getElementById('inp-from');
+    const inpTo = document.getElementById('inp-to');
+    const rateInfo = document.getElementById('rate-info');
+    const rateList = document.getElementById('rate-list');
+
+    function saveRates() { localStorage.setItem(KEY, JSON.stringify(rates)); }
+
+    function populateSelects() {
+      const currencies = Object.keys(rates);
+      [selFrom, selTo].forEach((sel, i) => {
+        const prev = sel.value;
+        sel.innerHTML = '';
+        currencies.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c; opt.textContent = c;
+          sel.appendChild(opt);
+        });
+        if (prev && currencies.includes(prev)) sel.value = prev;
+        else sel.selectedIndex = i === 0 ? currencies.indexOf('USD') : currencies.indexOf('KRW');
+      });
+    }
+
+    function convert() {
+      const val = parseFloat(inpFrom.value) || 0;
+      const from = selFrom.value, to = selTo.value;
+      const result = val * rates[to] / rates[from];
+      inpTo.value = Math.round(result * 100) / 100;
+      const rate = Math.round((rates[to] / rates[from]) * 10000) / 10000;
+      rateInfo.textContent = `1 ${from} = ${rate} ${to}`;
+    }
+
+    function renderRateList() {
+      rateList.innerHTML = '';
+      Object.entries(rates).forEach(([cur, val]) => {
+        const row = document.createElement('div');
+        row.className = 'rate-row';
+        row.innerHTML = `<span>${cur}</span><input type="number" value="${val}" data-cur="${cur}" step="any" />`;
+        rateList.appendChild(row);
+      });
+    }
+
+    rateList.addEventListener('input', e => {
+      if (e.target.dataset.cur) {
+        rates[e.target.dataset.cur] = parseFloat(e.target.value) || 0;
+        saveRates();
+        convert();
+      }
+    });
+
+    inpFrom.addEventListener('input', convert);
+    selFrom.addEventListener('change', convert);
+    selTo.addEventListener('change', convert);
+
+    document.getElementById('btn-swap').addEventListener('click', () => {
+      const tmp = selFrom.value;
+      selFrom.value = selTo.value;
+      selTo.value = tmp;
+      convert();
+    });
+
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      rates = { ...DEFAULT_RATES };
+      saveRates();
+      renderRateList();
+      convert();
+    });
+
+    populateSelects();
+    renderRateList();
+    convert();
+  </script>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>메모장 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; padding: 24px; max-width: 800px; margin: 0 auto; }
+    .back { color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 16px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .toolbar select, .toolbar button { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 14px; font-size: 0.85rem; cursor: pointer; }
+    .toolbar button:hover { border-color: var(--accent); }
+    .saved-msg { color: var(--accent); font-size: 0.85rem; opacity: 0; transition: opacity 0.3s; align-self: center; margin-left: auto; }
+    .saved-msg.show { opacity: 1; }
+    textarea { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 16px; font-size: 1rem; line-height: 1.7; resize: none; outline: none; font-family: inherit; min-height: 400px; }
+    textarea:focus { border-color: var(--accent); }
+    .status { display: flex; justify-content: space-between; color: var(--text-muted); font-size: 0.8rem; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>📝 메모장</h1>
+
+  <div class="toolbar">
+    <select id="note-select"></select>
+    <button id="btn-new">새 메모</button>
+    <button id="btn-delete">삭제</button>
+    <button id="btn-download">다운로드</button>
+    <span class="saved-msg" id="saved-msg">저장됨</span>
+  </div>
+
+  <textarea id="editor" placeholder="여기에 메모를 입력하세요..."></textarea>
+  <div class="status">
+    <span id="char-count">0자</span>
+    <span>자동 저장</span>
+  </div>
+
+  <script>
+    const KEY = 'hs_notepad_notes';
+    const editor = document.getElementById('editor');
+    const select = document.getElementById('note-select');
+    const savedMsg = document.getElementById('saved-msg');
+    const charCount = document.getElementById('char-count');
+
+    function loadNotes() { return JSON.parse(localStorage.getItem(KEY) || '{}'); }
+    function saveNotes(notes) { localStorage.setItem(KEY, JSON.stringify(notes)); }
+
+    function refreshList(activeId) {
+      const notes = loadNotes();
+      select.innerHTML = '';
+      const ids = Object.keys(notes).sort();
+      if (ids.length === 0) { createNote(); return; }
+      ids.forEach(id => {
+        const opt = document.createElement('option');
+        opt.value = id;
+        const preview = (notes[id].text || '').substring(0, 30) || '빈 메모';
+        opt.textContent = `${notes[id].title || id} – ${preview}`;
+        select.appendChild(opt);
+      });
+      if (activeId && notes[activeId]) select.value = activeId;
+      loadNote(select.value);
+    }
+
+    function loadNote(id) {
+      const notes = loadNotes();
+      editor.value = notes[id]?.text || '';
+      charCount.textContent = editor.value.length + '자';
+    }
+
+    function createNote() {
+      const notes = loadNotes();
+      const id = 'note_' + Date.now();
+      notes[id] = { title: '메모', text: '', created: Date.now() };
+      saveNotes(notes);
+      refreshList(id);
+    }
+
+    let saveTimer = null;
+    function autoSave() {
+      clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        const notes = loadNotes();
+        const id = select.value;
+        if (!notes[id]) return;
+        notes[id].text = editor.value;
+        saveNotes(notes);
+        savedMsg.classList.add('show');
+        setTimeout(() => savedMsg.classList.remove('show'), 1500);
+      }, 500);
+    }
+
+    editor.addEventListener('input', () => {
+      charCount.textContent = editor.value.length + '자';
+      autoSave();
+    });
+
+    select.addEventListener('change', () => loadNote(select.value));
+
+    document.getElementById('btn-new').addEventListener('click', createNote);
+
+    document.getElementById('btn-delete').addEventListener('click', () => {
+      const notes = loadNotes();
+      delete notes[select.value];
+      saveNotes(notes);
+      refreshList();
+    });
+
+    document.getElementById('btn-download').addEventListener('click', () => {
+      const blob = new Blob([editor.value], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'memo.txt';
+      a.click();
+    });
+
+    refreshList();
+  </script>
+</body>
+</html>

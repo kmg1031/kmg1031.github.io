@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hangman – Handshake Games</title>
+  <link rel="stylesheet" href="../../public/common.css" />
+  <style>
+    .game-container { width: 100%; max-width: 520px; }
+    .hint-bar {
+      text-align: center; margin-bottom: 16px; padding: 10px 20px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; color: var(--text-muted); font-size: 0.9rem;
+    }
+    .hint-bar span { color: var(--accent); font-weight: 700; }
+    .canvas-wrap {
+      display: flex; justify-content: center; margin-bottom: 20px;
+    }
+    canvas {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); max-width: 280px; width: 100%;
+    }
+    .word-display {
+      display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .letter-slot {
+      width: 36px; height: 44px; display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem; font-weight: 800;
+      border-bottom: 3px solid var(--accent); color: var(--text);
+    }
+    .letter-slot.revealed { color: var(--accent); }
+    .letter-slot.wrong-reveal { color: var(--accent2); }
+    .keyboard {
+      display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+      margin-bottom: 24px; max-width: 440px; margin-left: auto; margin-right: auto;
+    }
+    .key {
+      width: 38px; height: 42px; display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; font-weight: 700;
+      background: var(--surface); color: var(--text);
+      border: 1px solid var(--border); border-radius: 8px;
+      cursor: pointer; transition: background 0.15s, opacity 0.15s;
+    }
+    .key:hover { border-color: var(--accent); }
+    .key.correct { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .key.wrong { opacity: 0.3; background: var(--surface); }
+    .key.disabled { pointer-events: none; }
+    .lives {
+      text-align: center; margin-bottom: 16px; font-size: 0.9rem; color: var(--text-muted);
+    }
+    .lives .hearts { color: var(--accent2); font-size: 1.1rem; letter-spacing: 4px; }
+    .btn-row { display: flex; gap: 12px; justify-content: center; }
+    .overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 100; justify-content: center; align-items: center;
+    }
+    .overlay.show { display: flex; }
+    .overlay-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 32px; text-align: center;
+      box-shadow: var(--shadow); max-width: 380px; width: 90%;
+    }
+    .overlay-card h2 { margin-bottom: 8px; }
+    .overlay-card h2.win { color: var(--accent); }
+    .overlay-card h2.lose { color: var(--accent2); }
+    .overlay-card p { color: var(--text-muted); margin-bottom: 20px; }
+    .overlay-card .answer { color: var(--text); font-weight: 700; font-size: 1.2rem; }
+    @media (max-width: 400px) {
+      .key { width: 32px; height: 36px; font-size: 0.85rem; }
+      .letter-slot { width: 28px; height: 36px; font-size: 1.1rem; }
+    }
+  </style>
+</head>
+<body class="page-wrap">
+  <a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+  <h1 class="page-title">Hangman</h1>
+
+  <div class="game-container">
+    <div class="hint-bar">Category: <span id="category">-</span></div>
+
+    <div class="canvas-wrap">
+      <canvas id="canvas" width="280" height="280"></canvas>
+    </div>
+
+    <div class="lives">
+      <div class="hearts" id="hearts"></div>
+    </div>
+
+    <div class="word-display" id="word-display"></div>
+
+    <div class="keyboard" id="keyboard"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="newGame()">New Game</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-card">
+      <h2 id="result-title"></h2>
+      <p id="result-answer"></p>
+      <button class="btn btn-primary" onclick="newGame()">Play Again</button>
+    </div>
+  </div>
+
+  <script src="../../public/theme.js"></script>
+  <script>
+  (function() {
+    const WORDS = {
+      'Animal': ['ELEPHANT','GIRAFFE','DOLPHIN','PENGUIN','KANGAROO','OCTOPUS','CHEETAH','PANTHER','HAMSTER','PARROT',
+                 'BUFFALO','GORILLA','LEOPARD','SPARROW','LOBSTER','CRICKET','GAZELLE','PELICAN','RACCOON','PEACOCK'],
+      'Fruit': ['APPLE','BANANA','CHERRY','MANGO','GRAPE','ORANGE','PAPAYA','LEMON','MELON','PEACH',
+                'AVOCADO','COCONUT','APRICOT','KIWI','PLUM','GUAVA','LYCHEE','BERRY','PEAR','FIG'],
+      'Country': ['BRAZIL','CANADA','FRANCE','GERMANY','JAPAN','MEXICO','SWEDEN','TURKEY','EGYPT','NORWAY',
+                  'FINLAND','ICELAND','IRELAND','AUSTRIA','DENMARK','CROATIA','HUNGARY','MOROCCO','VIETNAM','POLAND'],
+      'Sport': ['SOCCER','TENNIS','CRICKET','HOCKEY','BOXING','ARCHERY','CYCLING','SURFING','FENCING','BOWLING',
+                'ROWING','DIVING','KARATE','SKIING','GOLF','RUGBY','SQUASH','CURLING','SKATING','POLO'],
+      'Food': ['PIZZA','BURGER','SUSHI','PASTA','TACO','WAFFLE','PRETZEL','BROWNIE','MUFFIN','COOKIE',
+               'NOODLE','SALAD','STEAK','SALMON','OMELET','DUMPLING','BISCUIT','YOGURT','CHEESE','SANDWICH'],
+      'Science': ['GRAVITY','NEUTRON','PROTEIN','ELEMENT','ISOTOPE','NUCLEUS','QUANTUM','VOLTAGE','POLYMER','CRYSTAL',
+                  'FORMULA','ENTROPY','PHOTON','PROTON','PLASMA','GENOME','ENZYME','NEURON','CARBON','OXYGEN']
+    };
+
+    const MAX_WRONG = 6;
+    let word, category, guessed, wrongCount, gameOver;
+
+    const $ = id => document.getElementById(id);
+    const canvas = $('canvas');
+    const ctx = canvas.getContext('2d');
+
+    function newGame() {
+      $('overlay').classList.remove('show');
+      const categories = Object.keys(WORDS);
+      category = categories[Math.floor(Math.random() * categories.length)];
+      const wordList = WORDS[category];
+      word = wordList[Math.floor(Math.random() * wordList.length)];
+      guessed = new Set();
+      wrongCount = 0;
+      gameOver = false;
+
+      $('category').textContent = category;
+      drawHangman();
+      renderWord();
+      renderKeyboard();
+      renderHearts();
+    }
+    window.newGame = newGame;
+
+    function renderHearts() {
+      const remaining = MAX_WRONG - wrongCount;
+      $('hearts').textContent = '\u2764'.repeat(remaining) + '\u2661'.repeat(wrongCount);
+    }
+
+    function renderWord() {
+      const display = $('word-display');
+      display.innerHTML = '';
+      for (const ch of word) {
+        const slot = document.createElement('div');
+        slot.className = 'letter-slot';
+        if (guessed.has(ch)) {
+          slot.textContent = ch;
+          slot.classList.add('revealed');
+        }
+        if (gameOver && !guessed.has(ch)) {
+          slot.textContent = ch;
+          slot.classList.add('wrong-reveal');
+        }
+        display.appendChild(slot);
+      }
+    }
+
+    function renderKeyboard() {
+      const kb = $('keyboard');
+      kb.innerHTML = '';
+      for (let i = 65; i <= 90; i++) {
+        const ch = String.fromCharCode(i);
+        const key = document.createElement('div');
+        key.className = 'key';
+        key.textContent = ch;
+        if (guessed.has(ch)) {
+          key.classList.add('disabled');
+          key.classList.add(word.includes(ch) ? 'correct' : 'wrong');
+        }
+        key.addEventListener('click', () => guess(ch));
+        kb.appendChild(key);
+      }
+    }
+
+    function guess(ch) {
+      if (gameOver || guessed.has(ch)) return;
+      guessed.add(ch);
+
+      if (!word.includes(ch)) {
+        wrongCount++;
+        drawHangman();
+        renderHearts();
+      }
+
+      renderWord();
+      renderKeyboard();
+
+      // Check win
+      if (word.split('').every(c => guessed.has(c))) {
+        gameOver = true;
+        setTimeout(() => {
+          const title = $('result-title');
+          title.textContent = 'You Win!';
+          title.className = 'win';
+          $('result-answer').innerHTML = 'The word was <span class="answer">' + word + '</span>';
+          $('overlay').classList.add('show');
+
+          const key = 'hs_hangman_best';
+          const prev = parseInt(localStorage.getItem(key)) || 0;
+          localStorage.setItem(key, prev + 1);
+        }, 400);
+        return;
+      }
+
+      // Check lose
+      if (wrongCount >= MAX_WRONG) {
+        gameOver = true;
+        renderWord();
+        setTimeout(() => {
+          const title = $('result-title');
+          title.textContent = 'Game Over';
+          title.className = 'lose';
+          $('result-answer').innerHTML = 'The word was <span class="answer">' + word + '</span>';
+          $('overlay').classList.add('show');
+        }, 400);
+      }
+    }
+
+    // Keyboard support
+    document.addEventListener('keydown', e => {
+      const ch = e.key.toUpperCase();
+      if (ch.length === 1 && ch >= 'A' && ch <= 'Z') guess(ch);
+    });
+
+    function drawHangman() {
+      const w = canvas.width, h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      // Get theme colors
+      const style = getComputedStyle(document.documentElement);
+      const lineColor = style.getPropertyValue('--text').trim() || '#e8eaf6';
+      const accentColor = style.getPropertyValue('--accent2').trim() || '#ff6584';
+
+      ctx.strokeStyle = lineColor;
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Base
+      ctx.beginPath(); ctx.moveTo(40, 250); ctx.lineTo(180, 250); ctx.stroke();
+      // Pole
+      ctx.beginPath(); ctx.moveTo(80, 250); ctx.lineTo(80, 40); ctx.stroke();
+      // Top
+      ctx.beginPath(); ctx.moveTo(80, 40); ctx.lineTo(180, 40); ctx.stroke();
+      // Rope
+      ctx.beginPath(); ctx.moveTo(180, 40); ctx.lineTo(180, 70); ctx.stroke();
+
+      ctx.strokeStyle = accentColor;
+      ctx.lineWidth = 3;
+
+      // Head
+      if (wrongCount >= 1) {
+        ctx.beginPath(); ctx.arc(180, 90, 20, 0, Math.PI * 2); ctx.stroke();
+      }
+      // Body
+      if (wrongCount >= 2) {
+        ctx.beginPath(); ctx.moveTo(180, 110); ctx.lineTo(180, 170); ctx.stroke();
+      }
+      // Left arm
+      if (wrongCount >= 3) {
+        ctx.beginPath(); ctx.moveTo(180, 125); ctx.lineTo(150, 150); ctx.stroke();
+      }
+      // Right arm
+      if (wrongCount >= 4) {
+        ctx.beginPath(); ctx.moveTo(180, 125); ctx.lineTo(210, 150); ctx.stroke();
+      }
+      // Left leg
+      if (wrongCount >= 5) {
+        ctx.beginPath(); ctx.moveTo(180, 170); ctx.lineTo(155, 210); ctx.stroke();
+      }
+      // Right leg
+      if (wrongCount >= 6) {
+        ctx.beginPath(); ctx.moveTo(180, 170); ctx.lineTo(205, 210); ctx.stroke();
+      }
+
+      // Face details when dead
+      if (wrongCount >= 6) {
+        ctx.lineWidth = 2;
+        // X eyes
+        ctx.beginPath(); ctx.moveTo(172, 84); ctx.lineTo(178, 92); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(178, 84); ctx.lineTo(172, 92); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(184, 84); ctx.lineTo(190, 92); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(190, 84); ctx.lineTo(184, 92); ctx.stroke();
+        // Frown
+        ctx.beginPath(); ctx.arc(180, 102, 6, Math.PI, 0); ctx.stroke();
+      }
+    }
+
+    newGame();
+  })();
+  </script>
+</body>
+</html>

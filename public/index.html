@@ -4,18 +4,30 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Handshake Games</title>
+  <link rel="stylesheet" href="common.css" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <header>
     <h1>Handshake Games</h1>
-    <p>클래식 미니게임 컬렉션</p>
+    <p>미니게임 & 유틸리티 컬렉션</p>
   </header>
 
+  <nav class="tabs">
+    <button class="tab active" data-tab="games">게임</button>
+    <button class="tab" data-tab="tools">도구</button>
+  </nav>
+
   <main>
-    <div class="game-grid" id="game-grid"></div>
+    <div class="tab-content active" id="tab-games">
+      <div class="game-grid" id="game-grid"></div>
+    </div>
+    <div class="tab-content" id="tab-tools">
+      <div class="game-grid" id="tool-grid"></div>
+    </div>
   </main>
 
+  <script src="theme.js"></script>
   <script src="main.js"></script>
 </body>
 </html>

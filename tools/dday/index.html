@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>D-Day Calculator</title>
+<link rel="stylesheet" href="../../public/common.css" />
+<style>
+  .container { width: 100%; max-width: 600px; }
+  .add-form {
+    display: flex; gap: 8px; margin-bottom: 24px; flex-wrap: wrap;
+  }
+  .add-form input[type="text"],
+  .add-form input[type="date"] {
+    flex: 1; min-width: 140px; padding: 10px 14px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; color: var(--text); font-size: 0.95rem;
+    outline: none;
+  }
+  .add-form input:focus { border-color: var(--accent); }
+  .dday-list { display: flex; flex-direction: column; gap: 12px; }
+  .dday-item {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 16px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 12px; box-shadow: var(--shadow);
+  }
+  .dday-info { flex: 1; min-width: 0; }
+  .dday-name {
+    font-weight: 700; font-size: 1.05rem; margin-bottom: 4px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .dday-date { font-size: 0.85rem; color: var(--text-muted); }
+  .dday-countdown {
+    text-align: right; white-space: nowrap;
+  }
+  .dday-days {
+    font-size: 1.5rem; font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .dday-hms { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+  .dday-past .dday-days {
+    background: linear-gradient(135deg, var(--accent2), #ff9a76);
+    -webkit-background-clip: text; background-clip: text;
+  }
+  .delete-btn {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 1.2rem; cursor: pointer; padding: 4px 8px;
+    border-radius: 8px; transition: background 0.2s, color 0.2s;
+  }
+  .delete-btn:hover { background: var(--accent2); color: #fff; }
+  .empty-msg {
+    text-align: center; color: var(--text-muted); padding: 40px 0;
+    font-size: 0.95rem;
+  }
+</style>
+</head>
+<body class="page-wrap">
+<a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+<h1 class="page-title">D-Day Calculator</h1>
+
+<div class="container">
+  <div class="add-form">
+    <input type="text" id="nameInput" placeholder="이름 (예: 시험일)" />
+    <input type="date" id="dateInput" />
+    <button class="btn btn-primary" id="addBtn">추가</button>
+  </div>
+  <div class="dday-list" id="ddayList"></div>
+</div>
+
+<script>
+const STORAGE_KEY = 'hs_dday_items';
+let items = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+
+const nameInput = document.getElementById('nameInput');
+const dateInput = document.getElementById('dateInput');
+const addBtn = document.getElementById('addBtn');
+const listEl = document.getElementById('ddayList');
+
+// Set default date to today
+dateInput.value = new Date().toISOString().slice(0, 10);
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+}
+
+function addItem() {
+  const name = nameInput.value.trim();
+  const date = dateInput.value;
+  if (!name || !date) return;
+  items.push({ id: Date.now(), name, date });
+  save();
+  nameInput.value = '';
+  render();
+  nameInput.focus();
+}
+
+function deleteItem(id) {
+  items = items.filter(i => i.id !== id);
+  save();
+  render();
+}
+
+function render() {
+  const now = new Date();
+  // Sort by nearest date (smallest absolute diff first)
+  const sorted = [...items].sort((a, b) => {
+    const da = Math.abs(new Date(a.date) - now);
+    const db = Math.abs(new Date(b.date) - now);
+    return da - db;
+  });
+
+  if (sorted.length === 0) {
+    listEl.innerHTML = '<div class="empty-msg">D-Day 항목을 추가해 보세요.</div>';
+    return;
+  }
+
+  listEl.innerHTML = sorted.map(item => {
+    const target = new Date(item.date + 'T00:00:00');
+    const diff = target - now;
+    const isPast = diff < 0;
+    const absDiff = Math.abs(diff);
+    const days = Math.floor(absDiff / 86400000);
+    const hours = Math.floor((absDiff % 86400000) / 3600000);
+    const mins = Math.floor((absDiff % 3600000) / 60000);
+    const secs = Math.floor((absDiff % 60000) / 1000);
+
+    const dayLabel = isPast ? `D+${days}` : days === 0 ? 'D-Day' : `D-${days}`;
+
+    return `<div class="dday-item ${isPast ? 'dday-past' : ''}">
+      <div class="dday-info">
+        <div class="dday-name">${esc(item.name)}</div>
+        <div class="dday-date">${item.date}</div>
+      </div>
+      <div class="dday-countdown">
+        <div class="dday-days">${dayLabel}</div>
+        <div class="dday-hms">${pad(hours)}:${pad(mins)}:${pad(secs)}</div>
+      </div>
+      <button class="delete-btn" onclick="deleteItem(${item.id})" title="삭제">&times;</button>
+    </div>`;
+  }).join('');
+}
+
+function pad(n) { return String(n).padStart(2, '0'); }
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+addBtn.addEventListener('click', addItem);
+nameInput.addEventListener('keydown', e => { if (e.key === 'Enter') addItem(); });
+
+render();
+setInterval(render, 1000);
+</script>
+<script src="../../public/theme.js"></script>
+</body>
+</html>

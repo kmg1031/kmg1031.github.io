@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Slide Puzzle – Handshake Games</title>
+  <link rel="stylesheet" href="../../public/common.css" />
+  <style>
+    .game-container { width: 100%; max-width: 420px; }
+    .stats-bar {
+      display: flex; gap: 16px; justify-content: center; margin-bottom: 20px;
+    }
+    .stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 12px 20px; text-align: center; min-width: 90px;
+    }
+    .stat-value { font-size: 1.5rem; font-weight: 800; color: var(--accent); }
+    .stat-label { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+    .board {
+      display: grid; grid-template-columns: repeat(4, 1fr);
+      gap: 6px; padding: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 20px;
+      aspect-ratio: 1;
+    }
+    .tile {
+      aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem; font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), #8b7fff);
+      color: #fff; border-radius: 12px; cursor: pointer;
+      transition: transform 0.15s ease, opacity 0.15s;
+      user-select: none;
+    }
+    .tile:hover { transform: scale(0.95); }
+    .tile:active { transform: scale(0.9); }
+    .tile.empty {
+      background: transparent; cursor: default; pointer-events: none;
+    }
+    .tile.correct {
+      background: linear-gradient(135deg, #4caf50, #66bb6a);
+    }
+    .btn-row { display: flex; gap: 12px; justify-content: center; }
+    .overlay {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      z-index: 100; justify-content: center; align-items: center;
+    }
+    .overlay.show { display: flex; }
+    .overlay-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 32px; text-align: center;
+      box-shadow: var(--shadow); max-width: 360px; width: 90%;
+    }
+    .overlay-card h2 { color: var(--accent); margin-bottom: 8px; }
+    .overlay-card p { color: var(--text-muted); margin-bottom: 20px; }
+    @media (max-width: 400px) {
+      .tile { font-size: 1.2rem; border-radius: 8px; }
+      .board { gap: 4px; padding: 8px; }
+    }
+  </style>
+</head>
+<body class="page-wrap">
+  <a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+  <h1 class="page-title">15 Puzzle</h1>
+
+  <div class="game-container">
+    <div class="stats-bar">
+      <div class="stat"><div class="stat-value" id="moves">0</div><div class="stat-label">Moves</div></div>
+      <div class="stat"><div class="stat-value" id="timer">00:00</div><div class="stat-label">Time</div></div>
+    </div>
+
+    <div class="board" id="board"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="shuffleBoard()">Shuffle</button>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay">
+    <div class="overlay-card">
+      <h2>Congratulations!</h2>
+      <p id="win-text"></p>
+      <button class="btn btn-primary" onclick="shuffleBoard()">Play Again</button>
+    </div>
+  </div>
+
+  <script src="../../public/theme.js"></script>
+  <script>
+  (function() {
+    let tiles = [];
+    let moves = 0;
+    let seconds = 0;
+    let timerInterval = null;
+    let started = false;
+    let won = false;
+
+    const $ = id => document.getElementById(id);
+
+    function isSolvable(arr) {
+      let inv = 0;
+      const flat = arr.filter(v => v !== 0);
+      for (let i = 0; i < flat.length; i++)
+        for (let j = i + 1; j < flat.length; j++)
+          if (flat[i] > flat[j]) inv++;
+      const emptyRow = Math.floor(arr.indexOf(0) / 4);
+      // For 4x4: solvable if (inversions + row of blank from bottom) is even
+      return (inv + (3 - emptyRow)) % 2 === 0;
+    }
+
+    function shuffleBoard() {
+      won = false;
+      $('overlay').classList.remove('show');
+      clearInterval(timerInterval);
+      seconds = 0;
+      moves = 0;
+      started = false;
+      $('moves').textContent = '0';
+      $('timer').textContent = '00:00';
+
+      do {
+        tiles = Array.from({ length: 16 }, (_, i) => i); // 0 = empty
+        for (let i = tiles.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [tiles[i], tiles[j]] = [tiles[j], tiles[i]];
+        }
+      } while (!isSolvable(tiles) || isWon());
+
+      render();
+    }
+    window.shuffleBoard = shuffleBoard;
+
+    function isWon() {
+      for (let i = 0; i < 15; i++) {
+        if (tiles[i] !== i + 1) return false;
+      }
+      return tiles[15] === 0;
+    }
+
+    function render() {
+      const board = $('board');
+      board.innerHTML = '';
+      for (let i = 0; i < 16; i++) {
+        const tile = document.createElement('div');
+        tile.className = 'tile';
+        if (tiles[i] === 0) {
+          tile.classList.add('empty');
+        } else {
+          tile.textContent = tiles[i];
+          // Highlight correctly placed tiles
+          if (tiles[i] === i + 1) tile.classList.add('correct');
+          tile.addEventListener('click', () => clickTile(i));
+        }
+        board.appendChild(tile);
+      }
+    }
+
+    function clickTile(idx) {
+      if (won) return;
+      const emptyIdx = tiles.indexOf(0);
+      const row = Math.floor(idx / 4), col = idx % 4;
+      const eRow = Math.floor(emptyIdx / 4), eCol = emptyIdx % 4;
+      const adjacent = (Math.abs(row - eRow) + Math.abs(col - eCol)) === 1;
+      if (!adjacent) return;
+
+      if (!started) {
+        started = true;
+        timerInterval = setInterval(() => {
+          seconds++;
+          const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+          const s = String(seconds % 60).padStart(2, '0');
+          $('timer').textContent = m + ':' + s;
+        }, 1000);
+      }
+
+      [tiles[idx], tiles[emptyIdx]] = [tiles[emptyIdx], tiles[idx]];
+      moves++;
+      $('moves').textContent = moves;
+      render();
+
+      if (isWon()) {
+        won = true;
+        clearInterval(timerInterval);
+        const m = String(Math.floor(seconds / 60)).padStart(2, '0');
+        const s = String(seconds % 60).padStart(2, '0');
+        $('win-text').textContent = `${moves} moves in ${m}:${s}`;
+        $('overlay').classList.add('show');
+
+        const key = 'hs_slide-puzzle_best';
+        const prev = parseInt(localStorage.getItem(key)) || Infinity;
+        if (moves < prev) localStorage.setItem(key, moves);
+      }
+    }
+
+    // Keyboard support
+    document.addEventListener('keydown', e => {
+      if (won) return;
+      const emptyIdx = tiles.indexOf(0);
+      const eRow = Math.floor(emptyIdx / 4), eCol = emptyIdx % 4;
+      let targetIdx = -1;
+      if (e.key === 'ArrowUp' && eRow < 3) targetIdx = emptyIdx + 4;
+      if (e.key === 'ArrowDown' && eRow > 0) targetIdx = emptyIdx - 4;
+      if (e.key === 'ArrowLeft' && eCol < 3) targetIdx = emptyIdx + 1;
+      if (e.key === 'ArrowRight' && eCol > 0) targetIdx = emptyIdx - 1;
+      if (targetIdx >= 0) { e.preventDefault(); clickTile(targetIdx); }
+    });
+
+    shuffleBoard();
+  })();
+  </script>
+</body>
+</html>

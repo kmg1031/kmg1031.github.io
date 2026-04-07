@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSON 포맷터 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .toolbar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .toolbar button { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); padding: 8px 16px; font-size: 0.85rem; cursor: pointer; }
+    .toolbar button:hover { border-color: var(--accent); color: var(--text); }
+    .toolbar button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .toolbar select { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 12px; font-size: 0.85rem; }
+    .panels { display: flex; gap: 16px; width: 100%; max-width: 1000px; flex: 1; min-height: 400px; }
+    .panel { flex: 1; display: flex; flex-direction: column; }
+    .panel label { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 6px; }
+    .panel textarea { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); padding: 14px; font-size: 0.85rem; line-height: 1.5; resize: none; outline: none; font-family: 'Consolas', 'Monaco', monospace; tab-size: 2; }
+    .panel textarea:focus { border-color: var(--accent); }
+    .error { color: var(--accent2); font-size: 0.85rem; margin-top: 8px; min-height: 1.2em; }
+    @media (max-width: 640px) { .panels { flex-direction: column; } }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>📋 JSON 포맷터</h1>
+
+  <div class="toolbar">
+    <button class="primary" id="btn-format">정리</button>
+    <button id="btn-minify">압축</button>
+    <button id="btn-copy">복사</button>
+    <button id="btn-clear">지우기</button>
+    <select id="indent">
+      <option value="2">2 스페이스</option>
+      <option value="4">4 스페이스</option>
+      <option value="\t">탭</option>
+    </select>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <label>입력</label>
+      <textarea id="input" placeholder="JSON을 붙여넣으세요..."></textarea>
+    </div>
+    <div class="panel">
+      <label>출력</label>
+      <textarea id="output" readonly></textarea>
+    </div>
+  </div>
+  <div class="error" id="error"></div>
+
+  <script>
+    const input = document.getElementById('input');
+    const output = document.getElementById('output');
+    const error = document.getElementById('error');
+    const indentSel = document.getElementById('indent');
+
+    function getIndent() {
+      const v = indentSel.value;
+      return v === '\\t' ? '\t' : parseInt(v);
+    }
+
+    function format() {
+      error.textContent = '';
+      try {
+        const parsed = JSON.parse(input.value);
+        output.value = JSON.stringify(parsed, null, getIndent());
+      } catch (e) {
+        error.textContent = '유효하지 않은 JSON: ' + e.message;
+        output.value = '';
+      }
+    }
+
+    function minify() {
+      error.textContent = '';
+      try {
+        const parsed = JSON.parse(input.value);
+        output.value = JSON.stringify(parsed);
+      } catch (e) {
+        error.textContent = '유효하지 않은 JSON: ' + e.message;
+        output.value = '';
+      }
+    }
+
+    document.getElementById('btn-format').addEventListener('click', format);
+    document.getElementById('btn-minify').addEventListener('click', minify);
+    document.getElementById('btn-copy').addEventListener('click', () => { navigator.clipboard.writeText(output.value); });
+    document.getElementById('btn-clear').addEventListener('click', () => { input.value = ''; output.value = ''; error.textContent = ''; });
+
+    input.addEventListener('input', () => {
+      if (input.value.trim()) format();
+    });
+  </script>
+</body>
+</html>

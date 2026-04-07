@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>비밀번호 생성 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 480px; }
+    .pw-display { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; font-family: 'Consolas', monospace; font-size: 1.3rem; text-align: center; word-break: break-all; margin-bottom: 16px; min-height: 56px; letter-spacing: 1px; }
+    .strength { height: 6px; border-radius: 3px; background: var(--border); margin-bottom: 8px; overflow: hidden; }
+    .strength-bar { height: 100%; border-radius: 3px; transition: width 0.3s, background 0.3s; }
+    .strength-label { text-align: center; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 16px; }
+    .buttons { display: flex; gap: 8px; margin-bottom: 20px; }
+    .btn { flex: 1; padding: 12px; border-radius: 12px; border: none; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .btn-gen { background: var(--accent); color: #fff; }
+    .btn-copy { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .option { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .option:last-child { border-bottom: none; }
+    .option label { font-size: 0.9rem; }
+    .option input[type="range"] { width: 120px; accent-color: var(--accent); }
+    .option input[type="number"] { width: 60px; text-align: center; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 4px; }
+    .toggle { width: 44px; height: 24px; border-radius: 12px; background: var(--border); border: none; cursor: pointer; position: relative; transition: background 0.2s; }
+    .toggle.on { background: var(--accent); }
+    .toggle::after { content: ''; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform 0.2s; }
+    .toggle.on::after { transform: translateX(20px); }
+    .history { margin-top: 16px; }
+    .history h3 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+    .history div { padding: 6px 0; border-bottom: 1px solid var(--border); font-family: monospace; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; word-break: break-all; }
+    .history div:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>🔐 비밀번호 생성</h1>
+
+  <div class="card">
+    <div class="pw-display" id="pw-display"></div>
+    <div class="strength"><div class="strength-bar" id="strength-bar"></div></div>
+    <div class="strength-label" id="strength-label">-</div>
+
+    <div class="buttons">
+      <button class="btn btn-gen" id="btn-gen">생성</button>
+      <button class="btn btn-copy" id="btn-copy">복사</button>
+    </div>
+
+    <div class="option"><label>길이</label><div style="display:flex;gap:8px;align-items:center;"><input type="range" id="opt-len" min="4" max="128" value="16" /><input type="number" id="opt-len-num" min="4" max="128" value="16" /></div></div>
+    <div class="option"><label>대문자 (A-Z)</label><button class="toggle on" id="opt-upper"></button></div>
+    <div class="option"><label>소문자 (a-z)</label><button class="toggle on" id="opt-lower"></button></div>
+    <div class="option"><label>숫자 (0-9)</label><button class="toggle on" id="opt-digits"></button></div>
+    <div class="option"><label>특수문자 (!@#...)</label><button class="toggle on" id="opt-symbols"></button></div>
+
+    <div class="history" id="history">
+      <h3>최근 생성</h3>
+    </div>
+  </div>
+
+  <script>
+    const CHARS = { upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', lower: 'abcdefghijklmnopqrstuvwxyz', digits: '0123456789', symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?' };
+    const opts = { upper: true, lower: true, digits: true, symbols: true };
+    const lenRange = document.getElementById('opt-len');
+    const lenNum = document.getElementById('opt-len-num');
+    const pwDisplay = document.getElementById('pw-display');
+    const bar = document.getElementById('strength-bar');
+    const label = document.getElementById('strength-label');
+    const historyEl = document.getElementById('history');
+    let history = [];
+
+    document.querySelectorAll('.toggle').forEach(btn => {
+      const key = btn.id.replace('opt-', '');
+      btn.addEventListener('click', () => {
+        opts[key] = !opts[key];
+        btn.classList.toggle('on', opts[key]);
+        generate();
+      });
+    });
+
+    lenRange.addEventListener('input', () => { lenNum.value = lenRange.value; generate(); });
+    lenNum.addEventListener('input', () => { lenRange.value = lenNum.value; generate(); });
+
+    function generate() {
+      let pool = '';
+      Object.entries(opts).forEach(([k, v]) => { if (v) pool += CHARS[k]; });
+      if (!pool) { pwDisplay.textContent = '옵션을 선택하세요'; return; }
+
+      const len = parseInt(lenNum.value) || 16;
+      const arr = new Uint32Array(len);
+      crypto.getRandomValues(arr);
+      let pw = '';
+      for (let i = 0; i < len; i++) pw += pool[arr[i] % pool.length];
+
+      pwDisplay.textContent = pw;
+      updateStrength(pw, pool.length);
+      history.unshift(pw);
+      if (history.length > 5) history.pop();
+      renderHistory();
+    }
+
+    function updateStrength(pw, poolSize) {
+      const entropy = pw.length * Math.log2(poolSize);
+      let pct, color, text;
+      if (entropy < 28) { pct = 20; color = '#e53935'; text = '매우 약함'; }
+      else if (entropy < 36) { pct = 40; color = '#ff9800'; text = '약함'; }
+      else if (entropy < 60) { pct = 60; color = '#fdd835'; text = '보통'; }
+      else if (entropy < 80) { pct = 80; color = '#66bb6a'; text = '강함'; }
+      else { pct = 100; color = '#43a047'; text = '매우 강함'; }
+      bar.style.width = pct + '%';
+      bar.style.background = color;
+      label.textContent = `${text} (엔트로피: ${Math.round(entropy)}비트)`;
+    }
+
+    function renderHistory() {
+      const existing = historyEl.querySelectorAll('div');
+      existing.forEach(d => d.remove());
+      history.forEach(pw => {
+        const d = document.createElement('div');
+        d.textContent = pw;
+        d.addEventListener('click', () => navigator.clipboard.writeText(pw));
+        historyEl.appendChild(d);
+      });
+    }
+
+    document.getElementById('btn-gen').addEventListener('click', generate);
+    document.getElementById('btn-copy').addEventListener('click', () => { navigator.clipboard.writeText(pwDisplay.textContent); });
+
+    generate();
+  </script>
+</body>
+</html>

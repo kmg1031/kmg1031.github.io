@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Clock | Handshake Tools</title>
+<link rel="stylesheet" href="../../public/common.css" />
+<style>
+  .clock-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 20px;
+    width: 100%;
+    max-width: 1000px;
+  }
+  .clock-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .clock-card .city {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .clock-card .date-label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .analog {
+    position: relative;
+    width: 140px;
+    height: 140px;
+  }
+  .analog canvas {
+    width: 140px;
+    height: 140px;
+  }
+  .digital {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .offset-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+</style>
+</head>
+<body class="page-wrap">
+<a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+<h1 class="page-title">World Clock</h1>
+
+<div class="clock-grid" id="grid"></div>
+
+<script>
+const CITIES = [
+  { name: 'Seoul',    tz: 'Asia/Seoul' },
+  { name: 'Tokyo',    tz: 'Asia/Tokyo' },
+  { name: 'New York', tz: 'America/New_York' },
+  { name: 'London',   tz: 'Europe/London' },
+  { name: 'Paris',    tz: 'Europe/Paris' },
+  { name: 'Sydney',   tz: 'Australia/Sydney' },
+  { name: 'Dubai',    tz: 'Asia/Dubai' },
+  { name: 'LA',       tz: 'America/Los_Angeles' }
+];
+
+const grid = document.getElementById('grid');
+const cards = [];
+
+CITIES.forEach(city => {
+  const div = document.createElement('div');
+  div.className = 'clock-card';
+  const canvas = document.createElement('canvas');
+  canvas.width = 280;
+  canvas.height = 280;
+  div.innerHTML = `<span class="city">${city.name}</span>`;
+  div.appendChild(canvas);
+  div.innerHTML += `<span class="digital" data-digital></span>
+    <span class="date-label" data-date></span>
+    <span class="offset-label" data-offset></span>`;
+  grid.appendChild(div);
+  cards.push({ el: div, canvas, ctx: canvas.getContext('2d'), tz: city.tz });
+});
+
+function getTimeParts(tz) {
+  const now = new Date();
+  const str = now.toLocaleString('en-US', { timeZone: tz, hour12: false,
+    hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const [h, m, s] = str.split(':').map(Number);
+  // ms fraction
+  const ms = now.getMilliseconds();
+  return { h, m, s, ms };
+}
+
+function drawClock(ctx, tz) {
+  const w = 280, cx = w / 2, cy = w / 2, r = 120;
+  const { h, m, s } = getTimeParts(tz);
+  ctx.clearRect(0, 0, w, w);
+
+  // face
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  const style = getComputedStyle(document.documentElement);
+  ctx.fillStyle = style.getPropertyValue('--surface2').trim() || '#22263a';
+  ctx.fill();
+  ctx.strokeStyle = style.getPropertyValue('--border').trim() || '#2e3350';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // hour marks
+  for (let i = 0; i < 12; i++) {
+    const angle = (i * 30 - 90) * Math.PI / 180;
+    const inner = i % 3 === 0 ? r - 18 : r - 12;
+    ctx.beginPath();
+    ctx.moveTo(cx + inner * Math.cos(angle), cy + inner * Math.sin(angle));
+    ctx.lineTo(cx + (r - 4) * Math.cos(angle), cy + (r - 4) * Math.sin(angle));
+    ctx.strokeStyle = style.getPropertyValue('--text-muted').trim() || '#7986cb';
+    ctx.lineWidth = i % 3 === 0 ? 3 : 1.5;
+    ctx.stroke();
+  }
+
+  // hour hand
+  const hAngle = ((h % 12) * 30 + m * 0.5 - 90) * Math.PI / 180;
+  drawHand(ctx, cx, cy, hAngle, r * 0.5, 5, style.getPropertyValue('--text').trim());
+
+  // minute hand
+  const mAngle = (m * 6 + s * 0.1 - 90) * Math.PI / 180;
+  drawHand(ctx, cx, cy, mAngle, r * 0.7, 3, style.getPropertyValue('--text').trim());
+
+  // second hand
+  const sAngle = (s * 6 - 90) * Math.PI / 180;
+  drawHand(ctx, cx, cy, sAngle, r * 0.8, 1.5, style.getPropertyValue('--accent').trim());
+
+  // center dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+  ctx.fillStyle = style.getPropertyValue('--accent').trim();
+  ctx.fill();
+}
+
+function drawHand(ctx, cx, cy, angle, len, width, color) {
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + len * Math.cos(angle), cy + len * Math.sin(angle));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+}
+
+function update() {
+  const now = new Date();
+  cards.forEach(c => {
+    drawClock(c.ctx, c.tz);
+    const timeFmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: c.tz, hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+    }).format(now);
+    c.el.querySelector('[data-digital]').textContent = timeFmt;
+
+    const dateFmt = new Intl.DateTimeFormat('ko-KR', {
+      timeZone: c.tz, year: 'numeric', month: 'short', day: 'numeric', weekday: 'short'
+    }).format(now);
+    c.el.querySelector('[data-date]').textContent = dateFmt;
+
+    // offset
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: c.tz, timeZoneName: 'shortOffset'
+    }).formatToParts(now);
+    const tzPart = parts.find(p => p.type === 'timeZoneName');
+    c.el.querySelector('[data-offset]').textContent = tzPart ? tzPart.value : '';
+  });
+}
+
+update();
+setInterval(update, 1000);
+</script>
+<script src="../../public/theme.js"></script>
+</body>
+</html>

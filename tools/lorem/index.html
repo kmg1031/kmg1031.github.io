@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lorem Ipsum Generator | Handshake Tools</title>
+<link rel="stylesheet" href="../../public/common.css" />
+<style>
+  .container { width: 100%; max-width: 800px; }
+  .controls {
+    display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;
+    margin-bottom: 20px;
+  }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+  .field input, .field select {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 14px; color: var(--text);
+    font-size: 0.95rem; outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .check-field {
+    display: flex; align-items: center; gap: 8px; padding-bottom: 10px;
+  }
+  .check-field input[type="checkbox"] {
+    accent-color: var(--accent); width: 18px; height: 18px;
+  }
+  .check-field label { font-size: 0.9rem; color: var(--text-muted); cursor: pointer; }
+  .output-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 24px;
+    box-shadow: var(--shadow); margin-bottom: 16px;
+    max-height: 500px; overflow-y: auto;
+    line-height: 1.7; font-size: 0.95rem; color: var(--text);
+  }
+  .output-card p { margin-bottom: 16px; }
+  .output-card p:last-child { margin-bottom: 0; }
+  .output-card li { margin-bottom: 8px; margin-left: 20px; }
+  .stats-bar {
+    display: flex; gap: 24px; font-size: 0.85rem; color: var(--text-muted);
+  }
+  .top-actions { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+</style>
+</head>
+<body class="page-wrap">
+<a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+<h1 class="page-title">Lorem Ipsum Generator</h1>
+
+<div class="container">
+  <div class="controls">
+    <div class="field">
+      <label for="paraCount">Paragraphs</label>
+      <input type="number" id="paraCount" value="3" min="1" max="20">
+    </div>
+    <div class="field">
+      <label for="wordCount">Words / paragraph</label>
+      <input type="number" id="wordCount" value="50" min="5" max="200">
+    </div>
+    <div class="field">
+      <label for="format">Format</label>
+      <select id="format">
+        <option value="paragraphs">Paragraphs</option>
+        <option value="list">List Items</option>
+      </select>
+    </div>
+    <div class="check-field">
+      <input type="checkbox" id="startClassic" checked>
+      <label for="startClassic">Start with "Lorem ipsum..."</label>
+    </div>
+  </div>
+
+  <div class="top-actions">
+    <button class="btn btn-primary" onclick="generate()">Generate</button>
+    <button class="btn btn-ghost" onclick="copyText()">Copy to Clipboard</button>
+  </div>
+
+  <div class="output-card" id="output"></div>
+  <div class="stats-bar">
+    <span id="statWords">Words: 0</span>
+    <span id="statChars">Characters: 0</span>
+    <span id="statParas">Paragraphs: 0</span>
+  </div>
+</div>
+
+<script>
+const WORDS = [
+  'lorem','ipsum','dolor','sit','amet','consectetur','adipiscing','elit',
+  'sed','do','eiusmod','tempor','incididunt','ut','labore','et','dolore',
+  'magna','aliqua','enim','ad','minim','veniam','quis','nostrud',
+  'exercitationem','ullamco','laboris','nisi','aliquip','ex','ea',
+  'commodo','consequat','duis','aute','irure','in','reprehenderit',
+  'voluptate','velit','esse','cillum','fugiat','nulla','pariatur',
+  'excepteur','sint','occaecat','cupidatat','non','proident','sunt',
+  'culpa','qui','officia','deserunt','mollit','anim','id','est',
+  'laborum','ac','ante','bibendum','blandit','condimentum','congue',
+  'cras','cursus','diam','dictum','dignissim','donec','dui','efficitur',
+  'egestas','elementum','euismod','facilisis','faucibus','felis',
+  'fermentum','finibus','gravida','habitant','hendrerit','iaculis',
+  'imperdiet','integer','interdum','justo','lacinia','lacus','laoreet',
+  'lectus','leo','libero','ligula','lobortis','luctus','maecenas',
+  'massa','mattis','mauris','maximus','metus','morbi','nam','nec',
+  'neque','nibh','nullam','nunc','odio','orci','ornare','pellentesque',
+  'pharetra','placerat','porta','porttitor','posuere','praesent',
+  'pretium','proin','pulvinar','purus','quam','rhoncus','risus',
+  'rutrum','sagittis','sapien','scelerisque','semper','sodales',
+  'sollicitudin','suscipit','suspendisse','tellus','tincidunt',
+  'tortor','tristique','turpis','ultrices','urna','varius',
+  'vehicula','vel','vestibulum','vitae','vivamus','viverra','volutpat'
+];
+
+const CLASSIC_START = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. ';
+
+function randWord() { return WORDS[Math.floor(Math.random() * WORDS.length)]; }
+
+function makeSentence(wordTarget) {
+  const len = Math.max(4, wordTarget);
+  let words = [];
+  for (let i = 0; i < len; i++) words.push(randWord());
+  words[0] = words[0][0].toUpperCase() + words[0].slice(1);
+  // add commas
+  if (len > 8) {
+    const commaPos = 3 + Math.floor(Math.random() * (len - 6));
+    words[commaPos] += ',';
+  }
+  return words.join(' ') + '.';
+}
+
+function makeParagraph(totalWords) {
+  let result = [];
+  let remaining = totalWords;
+  while (remaining > 0) {
+    const sentLen = Math.min(remaining, 6 + Math.floor(Math.random() * 10));
+    result.push(makeSentence(sentLen));
+    remaining -= sentLen;
+  }
+  return result.join(' ');
+}
+
+let lastText = '';
+
+function generate() {
+  const paraCount = Math.min(20, Math.max(1, parseInt(document.getElementById('paraCount').value) || 3));
+  const wordCount = Math.min(200, Math.max(5, parseInt(document.getElementById('wordCount').value) || 50));
+  const format = document.getElementById('format').value;
+  const startClassic = document.getElementById('startClassic').checked;
+
+  const paragraphs = [];
+  for (let i = 0; i < paraCount; i++) {
+    let p = makeParagraph(wordCount);
+    if (i === 0 && startClassic) {
+      p = CLASSIC_START + p;
+    }
+    paragraphs.push(p);
+  }
+
+  lastText = paragraphs.join('\n\n');
+
+  const output = document.getElementById('output');
+  if (format === 'list') {
+    output.innerHTML = '<ul>' + paragraphs.map(p => `<li>${p}</li>`).join('') + '</ul>';
+  } else {
+    output.innerHTML = paragraphs.map(p => `<p>${p}</p>`).join('');
+  }
+
+  // stats
+  const totalWords = lastText.split(/\s+/).filter(Boolean).length;
+  const totalChars = lastText.length;
+  document.getElementById('statWords').textContent = `Words: ${totalWords.toLocaleString()}`;
+  document.getElementById('statChars').textContent = `Characters: ${totalChars.toLocaleString()}`;
+  document.getElementById('statParas').textContent = `Paragraphs: ${paraCount}`;
+}
+
+function copyText() {
+  if (!lastText) return;
+  navigator.clipboard.writeText(lastText).then(() => {
+    const btn = document.querySelector('.btn-ghost');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+generate();
+</script>
+<script src="../../public/theme.js"></script>
+</body>
+</html>

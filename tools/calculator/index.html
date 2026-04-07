@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>계산기 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .calc { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; width: 320px; }
+    .display { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: right; margin-bottom: 16px; min-height: 80px; display: flex; flex-direction: column; justify-content: flex-end; }
+    .display .expr { color: var(--text-muted); font-size: 0.85rem; min-height: 1.2em; word-break: break-all; }
+    .display .result { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; word-break: break-all; }
+    .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .key { padding: 16px; border-radius: 12px; border: none; font-size: 1.2rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+    .key-num { background: var(--bg); color: var(--text); }
+    .key-num:hover { background: #2a2d3a; }
+    .key-op { background: var(--accent); color: #fff; }
+    .key-op:hover { opacity: 0.85; }
+    .key-fn { background: #2a2d3a; color: var(--text-muted); }
+    .key-fn:hover { background: #353850; }
+    .key-eq { background: var(--accent2); color: #fff; }
+    .key-eq:hover { opacity: 0.85; }
+    .history { margin-top: 16px; width: 320px; }
+    .history div { padding: 6px 0; border-bottom: 1px solid var(--border); color: var(--text-muted); font-size: 0.85rem; text-align: right; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>🧮 계산기</h1>
+
+  <div class="calc">
+    <div class="display">
+      <div class="expr" id="expr"></div>
+      <div class="result" id="result">0</div>
+    </div>
+    <div class="keys" id="keys"></div>
+  </div>
+  <div class="history" id="history"></div>
+
+  <script>
+    const layout = [
+      ['C','±','%','÷'],
+      ['7','8','9','×'],
+      ['4','5','6','−'],
+      ['1','2','3','+'],
+      ['0','.','⌫','=']
+    ];
+    const opMap = { '÷':'/', '×':'*', '−':'-', '+':'+' };
+    const keysEl = document.getElementById('keys');
+    const exprEl = document.getElementById('expr');
+    const resultEl = document.getElementById('result');
+    const historyEl = document.getElementById('history');
+
+    let current = '0', expression = '', newNumber = true, history = [];
+
+    layout.forEach(row => {
+      row.forEach(label => {
+        const btn = document.createElement('button');
+        btn.textContent = label;
+        btn.className = 'key ' + (
+          '0123456789.'.includes(label) ? 'key-num' :
+          label === '=' ? 'key-eq' :
+          '÷×−+'.includes(label) ? 'key-op' : 'key-fn'
+        );
+        if (label === '0') btn.style.gridColumn = 'span 1';
+        btn.addEventListener('click', () => press(label));
+        keysEl.appendChild(btn);
+      });
+    });
+
+    function press(k) {
+      if ('0123456789'.includes(k)) {
+        if (newNumber) { current = k; newNumber = false; }
+        else { current = current === '0' ? k : current + k; }
+        resultEl.textContent = current;
+      } else if (k === '.') {
+        if (newNumber) { current = '0.'; newNumber = false; }
+        else if (!current.includes('.')) { current += '.'; }
+        resultEl.textContent = current;
+      } else if (k === 'C') {
+        current = '0'; expression = ''; newNumber = true;
+        resultEl.textContent = '0'; exprEl.textContent = '';
+      } else if (k === '⌫') {
+        current = current.length > 1 ? current.slice(0, -1) : '0';
+        resultEl.textContent = current;
+      } else if (k === '±') {
+        current = current.startsWith('-') ? current.slice(1) : '-' + current;
+        if (current === '-0') current = '0';
+        resultEl.textContent = current;
+      } else if (k === '%') {
+        current = String(parseFloat(current) / 100);
+        resultEl.textContent = current;
+      } else if ('÷×−+'.includes(k)) {
+        expression += current + ' ' + k + ' ';
+        exprEl.textContent = expression;
+        newNumber = true;
+      } else if (k === '=') {
+        expression += current;
+        exprEl.textContent = expression + ' =';
+        try {
+          let evalExpr = expression;
+          Object.entries(opMap).forEach(([s, r]) => { evalExpr = evalExpr.split(s).join(r); });
+          const res = Function('"use strict"; return (' + evalExpr + ')')();
+          current = String(Math.round(res * 1e12) / 1e12);
+          resultEl.textContent = current;
+          history.unshift(`${expression} = ${current}`);
+          if (history.length > 10) history.pop();
+          renderHistory();
+        } catch { resultEl.textContent = 'Error'; current = '0'; }
+        expression = '';
+        newNumber = true;
+      }
+    }
+
+    function renderHistory() {
+      historyEl.innerHTML = '';
+      history.forEach(h => { const d = document.createElement('div'); d.textContent = h; historyEl.appendChild(d); });
+    }
+
+    document.addEventListener('keydown', e => {
+      const map = { Enter: '=', Escape: 'C', Backspace: '⌫', '/': '÷', '*': '×', '-': '−' };
+      const k = map[e.key] || e.key;
+      if ('0123456789.+-÷×−=C⌫%'.includes(k) || k === '±') { e.preventDefault(); press(k); }
+    });
+  </script>
+</body>
+</html>

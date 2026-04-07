@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BMI Calculator | Handshake Tools</title>
+<link rel="stylesheet" href="../../public/common.css" />
+<style>
+  .container { width: 100%; max-width: 560px; }
+  .input-group { display: flex; gap: 16px; margin-bottom: 20px; }
+  .field { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 0.9rem; color: var(--text-muted); font-weight: 600; }
+  .field input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    color: var(--text);
+    font-size: 1.1rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .field input:focus { border-color: var(--accent); }
+  .result-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .bmi-value {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .bmi-category {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .ideal-range {
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+  }
+  /* gauge */
+  .gauge-wrap { margin: 20px 0; position: relative; height: 28px; }
+  .gauge-bar {
+    height: 12px;
+    border-radius: 6px;
+    display: flex;
+    overflow: hidden;
+    margin-top: 8px;
+  }
+  .gauge-bar span { flex: 1; }
+  .gauge-bar .g-under { background: #42a5f5; }
+  .gauge-bar .g-normal { background: #66bb6a; }
+  .gauge-bar .g-over { background: #ffa726; }
+  .gauge-bar .g-obese { background: #ef5350; }
+  .gauge-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+  .gauge-pointer {
+    position: absolute;
+    top: 0;
+    width: 3px;
+    height: 20px;
+    background: var(--text);
+    border-radius: 2px;
+    transition: left 0.4s ease;
+  }
+  .gauge-pointer::after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: -4px;
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid var(--text);
+  }
+  /* table */
+  .ref-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  .ref-table th, .ref-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    text-align: left;
+  }
+  .ref-table th { color: var(--text-muted); font-weight: 600; }
+  .ref-table .active-row { background: var(--surface2); border-radius: 8px; }
+  .hidden { display: none; }
+</style>
+</head>
+<body class="page-wrap">
+<a class="back" href="../../public/index.html">&larr; 돌아가기</a>
+<h1 class="page-title">BMI Calculator</h1>
+
+<div class="container">
+  <div class="input-group">
+    <div class="field">
+      <label for="height">Height (cm)</label>
+      <input type="number" id="height" placeholder="170" min="50" max="250" step="0.1">
+    </div>
+    <div class="field">
+      <label for="weight">Weight (kg)</label>
+      <input type="number" id="weight" placeholder="65" min="10" max="500" step="0.1">
+    </div>
+  </div>
+  <button class="btn btn-primary" style="width:100%;margin-bottom:24px" onclick="calculate()">Calculate BMI</button>
+
+  <div id="resultArea" class="hidden">
+    <div class="result-card">
+      <div class="bmi-value" id="bmiVal">--</div>
+      <div class="bmi-category" id="bmiCat"></div>
+      <div class="ideal-range" id="idealRange"></div>
+      <div class="gauge-wrap">
+        <div class="gauge-pointer" id="pointer"></div>
+        <div class="gauge-bar">
+          <span class="g-under"></span>
+          <span class="g-normal"></span>
+          <span class="g-over"></span>
+          <span class="g-obese"></span>
+        </div>
+        <div class="gauge-labels">
+          <span>15</span><span>18.5</span><span>25</span><span>30</span><span>40</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <table class="ref-table">
+        <thead><tr><th>Category</th><th>BMI Range</th></tr></thead>
+        <tbody>
+          <tr data-cat="underweight"><td style="color:#42a5f5">Underweight</td><td>&lt; 18.5</td></tr>
+          <tr data-cat="normal"><td style="color:#66bb6a">Normal</td><td>18.5 &ndash; 24.9</td></tr>
+          <tr data-cat="overweight"><td style="color:#ffa726">Overweight</td><td>25.0 &ndash; 29.9</td></tr>
+          <tr data-cat="obese"><td style="color:#ef5350">Obese</td><td>&ge; 30.0</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function calculate() {
+  const h = parseFloat(document.getElementById('height').value);
+  const w = parseFloat(document.getElementById('weight').value);
+  if (!h || !w || h <= 0 || w <= 0) return;
+
+  const hm = h / 100;
+  const bmi = w / (hm * hm);
+  const bmiR = Math.round(bmi * 10) / 10;
+
+  document.getElementById('bmiVal').textContent = bmiR.toFixed(1);
+
+  let cat, catKey, color;
+  if (bmi < 18.5) { cat = 'Underweight'; catKey = 'underweight'; color = '#42a5f5'; }
+  else if (bmi < 25) { cat = 'Normal'; catKey = 'normal'; color = '#66bb6a'; }
+  else if (bmi < 30) { cat = 'Overweight'; catKey = 'overweight'; color = '#ffa726'; }
+  else { cat = 'Obese'; catKey = 'obese'; color = '#ef5350'; }
+
+  const catEl = document.getElementById('bmiCat');
+  catEl.textContent = cat;
+  catEl.style.color = color;
+
+  // ideal weight (BMI 18.5-24.9)
+  const idealLow = (18.5 * hm * hm).toFixed(1);
+  const idealHigh = (24.9 * hm * hm).toFixed(1);
+  document.getElementById('idealRange').textContent =
+    `Ideal weight for ${h}cm: ${idealLow}kg ~ ${idealHigh}kg`;
+
+  // pointer position (15-40 range mapped to 0-100%)
+  const pct = Math.min(100, Math.max(0, (bmi - 15) / (40 - 15) * 100));
+  document.getElementById('pointer').style.left = `calc(${pct}% - 1.5px)`;
+
+  // highlight table row
+  document.querySelectorAll('.ref-table tr[data-cat]').forEach(tr => {
+    tr.classList.toggle('active-row', tr.dataset.cat === catKey);
+  });
+
+  document.getElementById('resultArea').classList.remove('hidden');
+}
+
+// allow Enter key
+document.querySelectorAll('input').forEach(inp => {
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+});
+</script>
+<script src="../../public/theme.js"></script>
+</body>
+</html>

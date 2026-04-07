@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>포모도로 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; --work: #e53935; --break: #43a047; --long-break: #1e88e5; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 8px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .phase-label { color: var(--text-muted); font-size: 1rem; margin-bottom: 24px; }
+    .circle { width: 240px; height: 240px; border-radius: 50%; border: 6px solid var(--border); display: flex; align-items: center; justify-content: center; margin-bottom: 32px; position: relative; }
+    .circle svg { position: absolute; top: -6px; left: -6px; width: 252px; height: 252px; transform: rotate(-90deg); }
+    .circle svg circle { fill: none; stroke-width: 6; stroke-linecap: round; transition: stroke-dashoffset 1s linear; }
+    .time { font-size: 3.2rem; font-weight: 700; font-variant-numeric: tabular-nums; z-index: 1; }
+    .session-dots { display: flex; gap: 8px; margin-bottom: 24px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; background: var(--border); }
+    .dot.done { background: var(--work); }
+    .buttons { display: flex; gap: 12px; margin-bottom: 24px; }
+    .btn { padding: 12px 28px; border-radius: 12px; border: none; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .btn-start { background: var(--accent); color: #fff; }
+    .btn-stop { background: var(--accent2); color: #fff; }
+    .btn-reset { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .btn-skip { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+    .settings { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; width: 100%; max-width: 360px; }
+    .settings h3 { font-size: 0.95rem; color: var(--text-muted); margin-bottom: 12px; }
+    .setting-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .setting-row label { font-size: 0.9rem; }
+    .setting-row input { width: 60px; text-align: center; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 6px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>🍅 포모도로</h1>
+  <div class="phase-label" id="phase-label">작업 시간</div>
+
+  <div class="circle">
+    <svg viewBox="0 0 252 252"><circle id="progress" cx="126" cy="126" r="120" stroke="var(--work)" stroke-dasharray="754" stroke-dashoffset="0" /></svg>
+    <div class="time" id="display">25:00</div>
+  </div>
+
+  <div class="session-dots" id="dots"></div>
+
+  <div class="buttons">
+    <button class="btn btn-start" id="btn-start">시작</button>
+    <button class="btn btn-stop" id="btn-stop" style="display:none;">정지</button>
+    <button class="btn btn-skip" id="btn-skip">건너뛰기</button>
+    <button class="btn btn-reset" id="btn-reset">초기화</button>
+  </div>
+
+  <div class="settings">
+    <h3>설정 (분)</h3>
+    <div class="setting-row"><label>작업</label><input id="s-work" type="number" value="25" min="1" max="120" /></div>
+    <div class="setting-row"><label>짧은 휴식</label><input id="s-break" type="number" value="5" min="1" max="30" /></div>
+    <div class="setting-row"><label>긴 휴식</label><input id="s-long" type="number" value="15" min="1" max="60" /></div>
+    <div class="setting-row"><label>세션 수</label><input id="s-sessions" type="number" value="4" min="1" max="12" /></div>
+  </div>
+
+  <script>
+    const CIRC = 2 * Math.PI * 120;
+    let workMin = 25, breakMin = 5, longMin = 15, totalSessions = 4;
+    let phase = 'work', session = 0, remaining = workMin * 60, total = remaining;
+    let running = false, interval = null;
+
+    const display = document.getElementById('display');
+    const progress = document.getElementById('progress');
+    const phaseLabel = document.getElementById('phase-label');
+    const dotsEl = document.getElementById('dots');
+    const btnStart = document.getElementById('btn-start');
+    const btnStop = document.getElementById('btn-stop');
+
+    progress.setAttribute('stroke-dasharray', CIRC);
+
+    function readSettings() {
+      workMin = parseInt(document.getElementById('s-work').value) || 25;
+      breakMin = parseInt(document.getElementById('s-break').value) || 5;
+      longMin = parseInt(document.getElementById('s-long').value) || 15;
+      totalSessions = parseInt(document.getElementById('s-sessions').value) || 4;
+    }
+
+    function renderDots() {
+      dotsEl.innerHTML = '';
+      for (let i = 0; i < totalSessions; i++) {
+        const d = document.createElement('div');
+        d.className = 'dot' + (i < session ? ' done' : '');
+        dotsEl.appendChild(d);
+      }
+    }
+
+    function updateDisplay() {
+      const m = Math.floor(remaining / 60);
+      const s = remaining % 60;
+      display.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+      const offset = CIRC * (1 - remaining / total);
+      progress.setAttribute('stroke-dashoffset', offset);
+      const colors = { work: 'var(--work)', break: 'var(--break)', long: 'var(--long-break)' };
+      progress.setAttribute('stroke', colors[phase]);
+    }
+
+    function setPhase(p) {
+      phase = p;
+      if (p === 'work') { remaining = total = workMin * 60; phaseLabel.textContent = '작업 시간'; }
+      else if (p === 'break') { remaining = total = breakMin * 60; phaseLabel.textContent = '짧은 휴식'; }
+      else { remaining = total = longMin * 60; phaseLabel.textContent = '긴 휴식'; }
+      updateDisplay();
+    }
+
+    function nextPhase() {
+      if (phase === 'work') {
+        session++;
+        renderDots();
+        if (session >= totalSessions) { setPhase('long'); }
+        else { setPhase('break'); }
+      } else {
+        if (phase === 'long') { session = 0; renderDots(); }
+        setPhase('work');
+      }
+    }
+
+    function tick() {
+      remaining--;
+      if (remaining <= 0) { stop(); nextPhase(); alert(phase === 'work' ? '휴식 끝! 작업을 시작하세요.' : '작업 완료! 휴식하세요.'); return; }
+      updateDisplay();
+    }
+
+    function start() { readSettings(); running = true; interval = setInterval(tick, 1000); btnStart.style.display='none'; btnStop.style.display=''; }
+    function stop() { running = false; clearInterval(interval); btnStart.style.display=''; btnStop.style.display='none'; btnStart.textContent='계속'; }
+
+    btnStart.addEventListener('click', start);
+    btnStop.addEventListener('click', stop);
+    document.getElementById('btn-skip').addEventListener('click', () => { stop(); nextPhase(); btnStart.textContent='시작'; });
+    document.getElementById('btn-reset').addEventListener('click', () => { stop(); readSettings(); session=0; renderDots(); setPhase('work'); btnStart.textContent='시작'; });
+
+    renderDots();
+    updateDisplay();
+  </script>
+</body>
+</html>

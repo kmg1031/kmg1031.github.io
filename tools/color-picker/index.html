@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>색상 피커 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; width: 100%; max-width: 480px; }
+    .preview { width: 100%; height: 120px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 20px; transition: background 0.2s; }
+    .picker-row { display: flex; gap: 12px; align-items: center; margin-bottom: 16px; }
+    .picker-row input[type="color"] { width: 48px; height: 48px; border: none; border-radius: 8px; cursor: pointer; background: none; }
+    .picker-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+    .picker-row input[type="color"]::-webkit-color-swatch { border-radius: 8px; border: 1px solid var(--border); }
+    .values { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .val-row { display: flex; gap: 8px; align-items: center; }
+    .val-row label { min-width: 40px; font-size: 0.8rem; color: var(--text-muted); }
+    .val-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); padding: 6px 10px; font-size: 0.85rem; font-family: monospace; outline: none; }
+    .val-row button { background: none; border: 1px solid var(--border); border-radius: 6px; color: var(--text-muted); padding: 4px 8px; font-size: 0.75rem; cursor: pointer; }
+    .val-row button:hover { border-color: var(--accent); color: var(--accent); }
+    .sliders { margin-top: 16px; }
+    .slider-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .slider-row label { min-width: 16px; font-size: 0.85rem; font-weight: 600; }
+    .slider-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+    .slider-row .slider-val { min-width: 32px; text-align: right; font-size: 0.8rem; color: var(--text-muted); }
+    .palette { margin-top: 20px; }
+    .palette h3 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+    .palette-colors { display: flex; gap: 6px; flex-wrap: wrap; }
+    .palette-swatch { width: 36px; height: 36px; border-radius: 8px; border: 2px solid transparent; cursor: pointer; transition: border-color 0.2s; }
+    .palette-swatch:hover { border-color: var(--text); }
+    .saved-palette { margin-top: 16px; }
+    .saved-palette h3 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+    .saved-colors { display: flex; gap: 6px; flex-wrap: wrap; }
+    .btn-save { margin-top: 12px; background: var(--accent); color: #fff; border: none; border-radius: 8px; padding: 8px 20px; font-size: 0.85rem; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>🎨 색상 피커</h1>
+
+  <div class="card">
+    <div class="preview" id="preview"></div>
+
+    <div class="picker-row">
+      <input type="color" id="picker" value="#6c63ff" />
+      <div class="values">
+        <div class="val-row"><label>HEX</label><input id="v-hex" value="#6c63ff" /><button onclick="copyVal('v-hex')">복사</button></div>
+        <div class="val-row"><label>RGB</label><input id="v-rgb" readonly /><button onclick="copyVal('v-rgb')">복사</button></div>
+        <div class="val-row"><label>HSL</label><input id="v-hsl" readonly /><button onclick="copyVal('v-hsl')">복사</button></div>
+      </div>
+    </div>
+
+    <div class="sliders">
+      <div class="slider-row"><label>R</label><input type="range" id="s-r" min="0" max="255" /><span class="slider-val" id="sv-r">0</span></div>
+      <div class="slider-row"><label>G</label><input type="range" id="s-g" min="0" max="255" /><span class="slider-val" id="sv-g">0</span></div>
+      <div class="slider-row"><label>B</label><input type="range" id="s-b" min="0" max="255" /><span class="slider-val" id="sv-b">0</span></div>
+    </div>
+
+    <div class="palette">
+      <h3>자주 쓰는 색상</h3>
+      <div class="palette-colors" id="preset-colors"></div>
+    </div>
+
+    <div class="saved-palette">
+      <h3>저장된 색상</h3>
+      <div class="saved-colors" id="saved-colors"></div>
+      <button class="btn-save" id="btn-save">현재 색상 저장</button>
+    </div>
+  </div>
+
+  <script>
+    const picker = document.getElementById('picker');
+    const preview = document.getElementById('preview');
+    const vHex = document.getElementById('v-hex');
+    const vRgb = document.getElementById('v-rgb');
+    const vHsl = document.getElementById('v-hsl');
+    const sR = document.getElementById('s-r'), sG = document.getElementById('s-g'), sB = document.getElementById('s-b');
+
+    const presets = ['#e53935','#ff9800','#fdd835','#43a047','#1e88e5','#6c63ff','#ab47bc','#ff6584','#ffffff','#9e9e9e','#424242','#000000'];
+    const KEY = 'hs_color_saved';
+    let saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+
+    function hexToRgb(hex) {
+      const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+      return { r, g, b };
+    }
+
+    function rgbToHsl(r, g, b) {
+      r/=255; g/=255; b/=255;
+      const max=Math.max(r,g,b), min=Math.min(r,g,b), l=(max+min)/2;
+      let h=0, s=0;
+      if (max !== min) {
+        const d=max-min;
+        s = l>0.5 ? d/(2-max-min) : d/(max+min);
+        if (max===r) h=((g-b)/d+(g<b?6:0))/6;
+        else if (max===g) h=((b-r)/d+2)/6;
+        else h=((r-g)/d+4)/6;
+      }
+      return { h: Math.round(h*360), s: Math.round(s*100), l: Math.round(l*100) };
+    }
+
+    function update(hex) {
+      const { r, g, b } = hexToRgb(hex);
+      const { h, s, l } = rgbToHsl(r, g, b);
+      preview.style.background = hex;
+      picker.value = hex;
+      vHex.value = hex;
+      vRgb.value = `rgb(${r}, ${g}, ${b})`;
+      vHsl.value = `hsl(${h}, ${s}%, ${l}%)`;
+      sR.value = r; sG.value = g; sB.value = b;
+      document.getElementById('sv-r').textContent = r;
+      document.getElementById('sv-g').textContent = g;
+      document.getElementById('sv-b').textContent = b;
+    }
+
+    picker.addEventListener('input', () => update(picker.value));
+    vHex.addEventListener('change', () => { if (/^#[0-9a-f]{6}$/i.test(vHex.value)) update(vHex.value); });
+
+    [sR, sG, sB].forEach(s => {
+      s.addEventListener('input', () => {
+        const hex = '#' + [sR,sG,sB].map(s => parseInt(s.value).toString(16).padStart(2,'0')).join('');
+        update(hex);
+      });
+    });
+
+    function copyVal(id) { navigator.clipboard.writeText(document.getElementById(id).value); }
+
+    // Presets
+    const presetEl = document.getElementById('preset-colors');
+    presets.forEach(c => {
+      const sw = document.createElement('div');
+      sw.className = 'palette-swatch';
+      sw.style.background = c;
+      sw.addEventListener('click', () => update(c));
+      presetEl.appendChild(sw);
+    });
+
+    // Saved
+    function renderSaved() {
+      const el = document.getElementById('saved-colors');
+      el.innerHTML = '';
+      saved.forEach((c, i) => {
+        const sw = document.createElement('div');
+        sw.className = 'palette-swatch';
+        sw.style.background = c;
+        sw.addEventListener('click', () => update(c));
+        sw.addEventListener('dblclick', () => { saved.splice(i, 1); localStorage.setItem(KEY, JSON.stringify(saved)); renderSaved(); });
+        el.appendChild(sw);
+      });
+    }
+
+    document.getElementById('btn-save').addEventListener('click', () => {
+      saved.push(picker.value);
+      if (saved.length > 20) saved.shift();
+      localStorage.setItem(KEY, JSON.stringify(saved));
+      renderSaved();
+    });
+
+    update('#6c63ff');
+    renderSaved();
+  </script>
+</body>
+</html>
