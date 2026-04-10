@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>이미지 리사이저 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; padding: 24px; }
+    .back { color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; display: block; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; text-align: center; }
+    .container { max-width: 900px; margin: 0 auto; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 24px; }
+    .upload-area { border: 2px dashed var(--border); border-radius: var(--radius); padding: 48px 24px; text-align: center; cursor: pointer; transition: all 0.3s ease; position: relative; }
+    .upload-area:hover, .upload-area.dragover { border-color: var(--accent); background: rgba(108, 99, 255, 0.1); }
+    .upload-icon { font-size: 3rem; margin-bottom: 16px; opacity: 0.7; }
+    .upload-text { font-size: 1.1rem; margin-bottom: 8px; }
+    .upload-subtext { color: var(--text-muted); font-size: 0.9rem; }
+    .file-input { position: absolute; opacity: 0; width: 100%; height: 100%; cursor: pointer; }
+    .controls { display: none; margin-top: 24px; }
+    .controls.active { display: block; }
+    .control-group { margin-bottom: 20px; }
+    .control-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+    .input-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+    .input-group { display: flex; gap: 8px; align-items: center; }
+    input, select { background: var(--bg); border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 8px; font-size: 0.95rem; }
+    input:focus, select:focus { outline: none; border-color: var(--accent); }
+    input[type="number"] { width: 80px; }
+    input[type="range"] { width: 120px; }
+    button { background: var(--accent); color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: opacity 0.2s; }
+    button:hover:not(:disabled) { opacity: 0.85; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    button.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .preset-btn { background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; }
+    .preset-btn:hover { background: var(--border); }
+    .preview-area { display: none; margin-top: 24px; }
+    .preview-area.active { display: block; }
+    .preview-container { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    .preview-card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+    .preview-title { font-weight: 600; margin-bottom: 12px; color: var(--accent); }
+    .preview-image { max-width: 100%; max-height: 300px; border-radius: 8px; display: block; margin: 0 auto; }
+    .image-info { margin-top: 12px; font-size: 0.85rem; color: var(--text-muted); }
+    .error-message { background: rgba(255, 101, 132, 0.1); border: 1px solid var(--accent2); color: var(--accent2); padding: 12px; border-radius: 8px; margin-top: 12px; display: none; }
+    .loading { display: none; }
+    .loading.active { display: flex; align-items: center; justify-content: center; margin: 24px 0; color: var(--accent); }
+    .spinner { width: 20px; height: 20px; border: 2px solid transparent; border-top: 2px solid var(--accent); border-radius: 50%; animation: spin 1s linear infinite; margin-right: 8px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 768px) {
+      .preview-container { grid-template-columns: 1fr; }
+      .input-row { flex-direction: column; align-items: stretch; }
+      .input-group { justify-content: space-between; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a class="back" href="../../public/index.html">← 돌아가기</a>
+    <h1>🖼️ 이미지 리사이저</h1>
+
+    <div class="card">
+      <div class="upload-area" id="uploadArea">
+        <input type="file" class="file-input" id="fileInput" accept="image/*" />
+        <div class="upload-icon">📁</div>
+        <div class="upload-text">클릭하거나 이미지를 여기에 드래그하세요</div>
+        <div class="upload-subtext">지원 형식: JPG, PNG, GIF, WebP (최대 10MB)</div>
+      </div>
+
+      <div class="error-message" id="errorMessage"></div>
+      
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <span>이미지 처리 중...</span>
+      </div>
+
+      <div class="controls" id="controls">
+        <div class="control-group">
+          <label>크기 조절 방법</label>
+          <div class="input-row">
+            <select id="resizeMode">
+              <option value="pixel">픽셀 단위</option>
+              <option value="percent">퍼센트</option>
+              <option value="preset">프리셋</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="control-group" id="pixelControls">
+          <label>크기 (픽셀)</label>
+          <div class="input-row">
+            <div class="input-group">
+              <span>너비:</span>
+              <input type="number" id="widthInput" min="1" max="4000" />
+            </div>
+            <div class="input-group">
+              <span>높이:</span>
+              <input type="number" id="heightInput" min="1" max="4000" />
+            </div>
+            <label>
+              <input type="checkbox" id="aspectRatio" checked />
+              비율 유지
+            </label>
+          </div>
+        </div>
+
+        <div class="control-group" id="percentControls" style="display: none;">
+          <label>크기 비율</label>
+          <div class="input-row">
+            <input type="range" id="percentSlider" min="10" max="300" value="100" />
+            <span id="percentValue">100%</span>
+          </div>
+        </div>
+
+        <div class="control-group" id="presetControls" style="display: none;">
+          <label>프리셋 크기</label>
+          <div class="input-row">
+            <button type="button" class="preset-btn" data-size="16,16">아이콘 16×16</button>
+            <button type="button" class="preset-btn" data-size="32,32">아이콘 32×32</button>
+            <button type="button" class="preset-btn" data-size="64,64">아이콘 64×64</button>
+            <button type="button" class="preset-btn" data-size="150,150">썸네일 150×150</button>
+            <button type="button" class="preset-btn" data-size="300,300">중간 300×300</button>
+            <button type="button" class="preset-btn" data-size="1920,1080">Full HD</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>출력 형식</label>
+          <div class="input-row">
+            <select id="outputFormat">
+              <option value="png">PNG</option>
+              <option value="jpeg">JPEG</option>
+              <option value="webp">WebP</option>
+            </select>
+            <div id="qualityControls" style="display: none;">
+              <span>품질:</span>
+              <input type="range" id="qualitySlider" min="1" max="100" value="90" />
+              <span id="qualityValue">90%</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-row">
+          <button id="resetBtn" class="secondary">초기화</button>
+          <button id="downloadBtn">다운로드</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="preview-area" id="previewArea">
+      <div class="preview-container">
+        <div class="preview-card">
+          <div class="preview-title">원본 이미지</div>
+          <img id="originalPreview" class="preview-image" />
+          <div class="image-info" id="originalInfo"></div>
+        </div>
+        <div class="preview-card">
+          <div class="preview-title">리사이징된 이미지</div>
+          <canvas id="resizedCanvas" class="preview-image"></canvas>
+          <div class="image-info" id="resizedInfo"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    class ImageResizer {
+      constructor() {
+        this.originalImage = null;
+        this.originalFile = null;
+        this.canvas = document.getElementById('resizedCanvas');
+        this.ctx = this.canvas.getContext('2d');
+        this.initializeElements();
+        this.bindEvents();
+      }
+
+      initializeElements() {
+        this.uploadArea = document.getElementById('uploadArea');
+        this.fileInput = document.getElementById('fileInput');
+        this.controls = document.getElementById('controls');
+        this.previewArea = document.getElementById('previewArea');
+        this.errorMessage = document.getElementById('errorMessage');
+        this.loading = document.getElementById('loading');
+        this.originalPreview = document.getElementById('originalPreview');
+        this.originalInfo = document.getElementById('originalInfo');
+        this.resizedInfo = document.getElementById('resizedInfo');
+        
+        this.resizeMode = document.getElementById('resizeMode');
+        this.pixelControls = document.getElementById('pixelControls');
+        this.percentControls = document.getElementById('percentControls');
+        this.presetControls = document.getElementById('presetControls');
+        
+        this.widthInput = document.getElementById('widthInput');
+        this.heightInput = document.getElementById('heightInput');
+        this.aspectRatio = document.getElementById('aspectRatio');
+        this.percentSlider = document.getElementById('percentSlider');
+        this.percentValue = document.getElementById('percentValue');
+        
+        this.outputFormat = document.getElementById('outputFormat');
+        this.qualityControls = document.getElementById('qualityControls');
+        this.qualitySlider = document.getElementById('qualitySlider');
+        this.qualityValue = document.getElementById('qualityValue');
+        
+        this.resetBtn = document.getElementById('resetBtn');
+        this.downloadBtn = document.getElementById('downloadBtn');
+      }
+
+      bindEvents() {
+        // 파일 업로드
+        this.uploadArea.addEventListener('click', () => this.fileInput.click());
+        this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e.target.files[0]));
+
+        // 드래그 앤 드롭
+        this.uploadArea.addEventListener('dragover', this.handleDragOver.bind(this));
+        this.uploadArea.addEventListener('dragleave', this.handleDragLeave.bind(this));
+        this.uploadArea.addEventListener('drop', this.handleDrop.bind(this));
+
+        // 컨트롤 이벤트
+        this.resizeMode.addEventListener('change', this.handleModeChange.bind(this));
+        this.widthInput.addEventListener('input', this.handleSizeChange.bind(this));
+        this.heightInput.addEventListener('input', this.handleSizeChange.bind(this));
+        this.aspectRatio.addEventListener('change', this.handleAspectRatioChange.bind(this));
+        this.percentSlider.addEventListener('input', this.handlePercentChange.bind(this));
+        this.outputFormat.addEventListener('change', this.handleFormatChange.bind(this));
+        this.qualitySlider.addEventListener('input', this.handleQualityChange.bind(this));
+
+        // 프리셋 버튼
+        this.presetControls.addEventListener('click', this.handlePresetClick.bind(this));
+
+        // 액션 버튼
+        this.resetBtn.addEventListener('click', this.reset.bind(this));
+        this.downloadBtn.addEventListener('click', this.download.bind(this));
+      }
+
+      handleFileSelect(file) {
+        if (!file) return;
+        if (!this.validateFile(file)) return;
+        this.loadImage(file);
+      }
+
+      handleDragOver(e) {
+        e.preventDefault();
+        this.uploadArea.classList.add('dragover');
+      }
+
+      handleDragLeave(e) {
+        e.preventDefault();
+        this.uploadArea.classList.remove('dragover');
+      }
+
+      handleDrop(e) {
+        e.preventDefault();
+        this.uploadArea.classList.remove('dragover');
+        const file = e.dataTransfer.files[0];
+        if (file) this.handleFileSelect(file);
+      }
+
+      validateFile(file) {
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+        if (!allowedTypes.includes(file.type)) {
+          this.showError('지원하지 않는 파일 형식입니다. JPG, PNG, GIF, WebP 파일만 업로드할 수 있습니다.');
+          return false;
+        }
+
+        if (file.size > maxSize) {
+          this.showError('파일 크기가 너무 큽니다. 10MB 이하의 파일만 업로드할 수 있습니다.');
+          return false;
+        }
+
+        return true;
+      }
+
+      async loadImage(file) {
+        this.showLoading(true);
+        this.hideError();
+
+        try {
+          const img = new Image();
+          img.onload = () => {
+            this.originalImage = img;
+            this.originalFile = file;
+            this.setupImage();
+          };
+          img.onerror = () => {
+            this.showError('이미지를 로드할 수 없습니다.');
+            this.showLoading(false);
+          };
+          img.src = URL.createObjectURL(file);
+        } catch (error) {
+          this.showError('이미지 처리 중 오류가 발생했습니다.');
+          this.showLoading(false);
+        }
+      }
+
+      setupImage() {
+        // 원본 미리보기 설정
+        this.originalPreview.src = this.originalImage.src;
+        this.originalInfo.textContent = `${this.originalImage.width}×${this.originalImage.height} px, ${this.formatFileSize(this.originalFile.size)}`;
+
+        // 컨트롤 초기값 설정
+        this.widthInput.value = this.originalImage.width;
+        this.heightInput.value = this.originalImage.height;
+        this.widthInput.max = Math.max(4000, this.originalImage.width * 2);
+        this.heightInput.max = Math.max(4000, this.originalImage.height * 2);
+
+        // UI 표시
+        this.controls.classList.add('active');
+        this.previewArea.classList.add('active');
+        this.showLoading(false);
+
+        // 초기 리사이징 실행
+        this.resizeImage();
+      }
+
+      handleModeChange() {
+        const mode = this.resizeMode.value;
+        this.pixelControls.style.display = mode === 'pixel' ? 'block' : 'none';
+        this.percentControls.style.display = mode === 'percent' ? 'block' : 'none';
+        this.presetControls.style.display = mode === 'preset' ? 'block' : 'none';
+        
+        if (mode === 'percent') {
+          this.handlePercentChange();
+        } else if (mode === 'pixel') {
+          this.resizeImage();
+        }
+      }
+
+      handleSizeChange() {
+        if (this.aspectRatio.checked) {
+          const target = event.target;
+          const aspectRatio = this.originalImage.width / this.originalImage.height;
+          
+          if (target === this.widthInput) {
+            this.heightInput.value = Math.round(this.widthInput.value / aspectRatio);
+          } else {
+            this.widthInput.value = Math.round(this.heightInput.value * aspectRatio);
+          }
+        }
+        this.resizeImage();
+      }
+
+      handleAspectRatioChange() {
+        if (this.aspectRatio.checked) {
+          const aspectRatio = this.originalImage.width / this.originalImage.height;
+          this.heightInput.value = Math.round(this.widthInput.value / aspectRatio);
+          this.resizeImage();
+        }
+      }
+
+      handlePercentChange() {
+        const percent = this.percentSlider.value;
+        this.percentValue.textContent = `${percent}%`;
+        
+        const newWidth = Math.round(this.originalImage.width * percent / 100);
+        const newHeight = Math.round(this.originalImage.height * percent / 100);
+        
+        this.widthInput.value = newWidth;
+        this.heightInput.value = newHeight;
+        this.resizeImage();
+      }
+
+      handlePresetClick(e) {
+        if (e.target.classList.contains('preset-btn')) {
+          const [width, height] = e.target.dataset.size.split(',').map(Number);
+          this.widthInput.value = width;
+          this.heightInput.value = height;
+          this.resizeImage();
+        }
+      }
+
+      handleFormatChange() {
+        const format = this.outputFormat.value;
+        this.qualityControls.style.display = (format === 'jpeg' || format === 'webp') ? 'block' : 'none';
+      }
+
+      handleQualityChange() {
+        const quality = this.qualitySlider.value;
+        this.qualityValue.textContent = `${quality}%`;
+      }
+
+      resizeImage() {
+        if (!this.originalImage) return;
+
+        try {
+          const width = parseInt(this.widthInput.value);
+          const height = parseInt(this.heightInput.value);
+
+          if (width <= 0 || height <= 0) return;
+
+          // 캔버스 크기 설정
+          this.canvas.width = width;
+          this.canvas.height = height;
+
+          // 이미지 그리기
+          this.ctx.clearRect(0, 0, width, height);
+          this.ctx.drawImage(this.originalImage, 0, 0, width, height);
+
+          // 정보 업데이트
+          this.updateResizedInfo(width, height);
+        } catch (error) {
+          this.showError('이미지 리사이징 중 오류가 발생했습니다.');
+        }
+      }
+
+      updateResizedInfo(width, height) {
+        const originalSize = this.originalImage.width * this.originalImage.height;
+        const newSize = width * height;
+        const ratio = ((newSize / originalSize) * 100).toFixed(1);
+        
+        this.resizedInfo.innerHTML = `${width}×${height} px<br>크기 변화: ${ratio}%`;
+      }
+
+      async download() {
+        if (!this.canvas) return;
+
+        try {
+          const format = this.outputFormat.value;
+          const quality = this.qualitySlider.value / 100;
+          
+          let mimeType = `image/${format}`;
+          let extension = format;
+          
+          if (format === 'jpeg') {
+            mimeType = 'image/jpeg';
+            extension = 'jpg';
+          }
+
+          const dataUrl = this.canvas.toDataURL(mimeType, quality);
+          
+          // 파일명 생성
+          const originalName = this.originalFile.name;
+          const nameWithoutExt = originalName.substring(0, originalName.lastIndexOf('.'));
+          const newFileName = `${nameWithoutExt}_resized_${this.canvas.width}x${this.canvas.height}.${extension}`;
+
+          // 다운로드
+          const link = document.createElement('a');
+          link.download = newFileName;
+          link.href = dataUrl;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+        } catch (error) {
+          this.showError('다운로드 중 오류가 발생했습니다.');
+        }
+      }
+
+      reset() {
+        this.originalImage = null;
+        this.originalFile = null;
+        this.controls.classList.remove('active');
+        this.previewArea.classList.remove('active');
+        this.fileInput.value = '';
+        this.hideError();
+        this.showLoading(false);
+        
+        // 컨트롤 초기화
+        this.resizeMode.value = 'pixel';
+        this.handleModeChange();
+        this.percentSlider.value = 100;
+        this.percentValue.textContent = '100%';
+        this.outputFormat.value = 'png';
+        this.handleFormatChange();
+        this.qualitySlider.value = 90;
+        this.qualityValue.textContent = '90%';
+        this.aspectRatio.checked = true;
+      }
+
+      showError(message) {
+        this.errorMessage.textContent = message;
+        this.errorMessage.style.display = 'block';
+      }
+
+      hideError() {
+        this.errorMessage.style.display = 'none';
+      }
+
+      showLoading(show) {
+        if (show) {
+          this.loading.classList.add('active');
+        } else {
+          this.loading.classList.remove('active');
+        }
+      }
+
+      formatFileSize(bytes) {
+        if (bytes === 0) return '0 Bytes';
+        const k = 1024;
+        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+      }
+    }
+
+    // 앱 초기화
+    document.addEventListener('DOMContentLoaded', () => {
+      new ImageResizer();
+    });
+  </script>
+</body>
+</html>

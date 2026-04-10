@@ -56,6 +56,11 @@ const TOOLS = [
   { id: 'lorem',              name: '로렘 입숨',      icon: '📃', path: '../tools/lorem/index.html' },
   { id: 'text-diff',          name: '텍스트 비교',    icon: '🔀', path: '../tools/text-diff/index.html' },
   { id: 'hash',               name: '해시 생성기',    icon: '🔑', path: '../tools/hash/index.html' },
+  { id: 'url-encoder',        name: 'URL 인코더',    icon: '🔗', path: '../tools/url-encoder/index.html' },
+  { id: 'discount-calculator', name: '할인율 계산기',  icon: '💰', path: '../tools/discount-calculator/index.html' },
+  { id: 'image-resizer',      name: '이미지 리사이저', icon: '🖼️', path: '../tools/image-resizer/index.html' },
+  { id: 'age-calculator',     name: '나이 계산기',    icon: '🎂', path: '../tools/age-calculator/index.html' },
+  { id: 'case-converter',     name: '케이스 변환기',   icon: '🔤', path: '../tools/case-converter/index.html' },
 ];
 
 // ===== 카드 렌더링 =====

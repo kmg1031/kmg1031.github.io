@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>케이스 컨버터 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; --shadow: 0 4px 20px rgba(0,0,0,0.3); }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; transition: color 0.2s; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    
+    .container { width: 100%; max-width: 800px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; box-shadow: var(--shadow); }
+    
+    .input-section { margin-bottom: 24px; }
+    .input-section label { display: block; font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px; font-weight: 600; }
+    .input-section textarea { width: 100%; height: 120px; background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; color: var(--text); font-size: 1rem; line-height: 1.6; resize: vertical; outline: none; font-family: 'Consolas', 'Monaco', monospace; transition: border-color 0.2s; }
+    .input-section textarea:focus { border-color: var(--accent); }
+    .input-section textarea::placeholder { color: var(--text-muted); }
+    
+    .options { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .options button { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text-muted); padding: 8px 16px; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; }
+    .options button:hover { border-color: var(--accent); color: var(--text); }
+    .options button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    
+    .stats { display: flex; gap: 20px; font-size: 0.85rem; margin-bottom: 20px; }
+    .stat { color: var(--text-muted); }
+    .stat span { color: var(--accent); font-weight: 600; }
+    
+    .results { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+    .result-item { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .result-header { display: flex; justify-content: between; align-items: center; margin-bottom: 8px; }
+    .result-label { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
+    .result-description { font-size: 0.75rem; color: var(--text-muted); opacity: 0.7; }
+    .result-value { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-family: 'Consolas', 'Monaco', monospace; font-size: 0.9rem; word-break: break-all; margin-bottom: 8px; min-height: 40px; display: flex; align-items: center; }
+    .copy-btn { width: 100%; background: var(--accent); border: none; border-radius: 6px; color: #fff; padding: 8px; font-size: 0.8rem; cursor: pointer; transition: opacity 0.2s; }
+    .copy-btn:hover { opacity: 0.8; }
+    .copy-btn.copied { background: #4caf50; }
+    
+    .examples { margin-top: 16px; }
+    .examples h3 { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 8px; }
+    .example-list { display: flex; gap: 8px; flex-wrap: wrap; }
+    .example-btn { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; color: var(--text-muted); cursor: pointer; transition: all 0.2s; }
+    .example-btn:hover { border-color: var(--accent); color: var(--text); }
+    
+    @media (max-width: 640px) { 
+      .results { grid-template-columns: 1fr; }
+      .options { flex-direction: column; }
+      .stats { flex-direction: column; gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>🔤 케이스 컨버터</h1>
+
+  <div class="container">
+    <div class="card">
+      <div class="input-section">
+        <label for="input">변환할 텍스트</label>
+        <textarea 
+          id="input" 
+          placeholder="여기에 텍스트를 입력하세요... (예: getUserName, get_user_name, get-user-name)"
+        ></textarea>
+      </div>
+
+      <div class="options">
+        <button id="preserve-numbers" class="active">숫자 보존</button>
+        <button id="remove-special">특수문자 제거</button>
+        <button id="smart-parse" class="active">스마트 파싱</button>
+        <button id="clear-btn">지우기</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat">단어: <span id="word-count">0</span></div>
+        <div class="stat">글자: <span id="char-count">0</span></div>
+        <div class="stat">감지된 케이스: <span id="detected-case">-</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="results" id="results"></div>
+
+      <div class="examples">
+        <h3>예제 텍스트 (클릭하여 입력)</h3>
+        <div class="example-list">
+          <button class="example-btn" data-example="getUserName">getUserName</button>
+          <button class="example-btn" data-example="GetUserName">GetUserName</button>
+          <button class="example-btn" data-example="get_user_name">get_user_name</button>
+          <button class="example-btn" data-example="get-user-name">get-user-name</button>
+          <button class="example-btn" data-example="MY_CONSTANT_VALUE">MY_CONSTANT_VALUE</button>
+          <button class="example-btn" data-example="XMLHttpRequest">XMLHttpRequest</button>
+          <button class="example-btn" data-example="user123_profile_data">user123_profile_data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('input');
+    const results = document.getElementById('results');
+    const wordCount = document.getElementById('word-count');
+    const charCount = document.getElementById('char-count');
+    const detectedCase = document.getElementById('detected-case');
+    const preserveNumbers = document.getElementById('preserve-numbers');
+    const removeSpecial = document.getElementById('remove-special');
+    const smartParse = document.getElementById('smart-parse');
+    const clearBtn = document.getElementById('clear-btn');
+
+    // 케이스 변환 정의
+    const caseTypes = [
+      {
+        name: 'camelCase',
+        description: 'JavaScript, Java 변수명',
+        convert: (words) => {
+          if (!words.length) return '';
+          return words[0].toLowerCase() + words.slice(1).map(capitalize).join('');
+        }
+      },
+      {
+        name: 'PascalCase',
+        description: 'class명, 컴포넌트명',
+        convert: (words) => words.map(capitalize).join('')
+      },
+      {
+        name: 'snake_case',
+        description: 'Python, Ruby 변수명',
+        convert: (words) => words.join('_').toLowerCase()
+      },
+      {
+        name: 'kebab-case',
+        description: 'CSS, HTML 속성',
+        convert: (words) => words.join('-').toLowerCase()
+      },
+      {
+        name: 'SCREAMING_SNAKE_CASE',
+        description: '상수명',
+        convert: (words) => words.join('_').toUpperCase()
+      },
+      {
+        name: 'dot.case',
+        description: '설정 파일 키',
+        convert: (words) => words.join('.').toLowerCase()
+      },
+      {
+        name: 'path/case',
+        description: '파일 경로',
+        convert: (words) => words.join('/').toLowerCase()
+      },
+      {
+        name: 'Train-Case',
+        description: 'HTTP 헤더',
+        convert: (words) => words.map(capitalize).join('-')
+      }
+    ];
+
+    function capitalize(word) {
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    }
+
+    function detectCaseType(text) {
+      if (!text) return '-';
+      
+      if (/^[A-Z][a-zA-Z0-9]*$/.test(text) && /[a-z]/.test(text)) return 'PascalCase';
+      if (/^[a-z][a-zA-Z0-9]*$/.test(text) && /[A-Z]/.test(text)) return 'camelCase';
+      if (/^[A-Z0-9_]+$/.test(text) && /_/.test(text)) return 'SCREAMING_SNAKE_CASE';
+      if (/^[a-z0-9_]+$/.test(text) && /_/.test(text)) return 'snake_case';
+      if (/^[a-z0-9-]+$/.test(text) && /-/.test(text)) return 'kebab-case';
+      if (/^[A-Z][a-zA-Z0-9]*(-[A-Z][a-zA-Z0-9]*)*$/.test(text)) return 'Train-Case';
+      if (/^[a-z0-9.]+$/.test(text) && /\./.test(text)) return 'dot.case';
+      if (/^[a-z0-9/]+$/.test(text) && /\//.test(text)) return 'path/case';
+      
+      return 'Mixed';
+    }
+
+    function parseWords(text) {
+      if (!text) return [];
+      
+      try {
+        let words = [];
+        const options = {
+          preserveNumbers: preserveNumbers.classList.contains('active'),
+          removeSpecial: removeSpecial.classList.contains('active'),
+          smartParse: smartParse.classList.contains('active')
+        };
+
+        // 특수문자 정리
+        if (options.removeSpecial) {
+          text = text.replace(/[^\w\s-_.\/]/g, '');
+        }
+
+        if (options.smartParse) {
+          // 스마트 파싱: 다양한 케이스 자동 감지
+          text = text
+            // camelCase, PascalCase 분리
+            .replace(/([a-z])([A-Z])/g, '$1 $2')
+            // 숫자와 문자 분리
+            .replace(/([a-zA-Z])(\d)/g, '$1 $2')
+            .replace(/(\d)([a-zA-Z])/g, '$1 $2')
+            // snake_case, kebab-case, dot.case, path/case 분리
+            .replace(/[_\-\.\/]/g, ' ')
+            // 연속 공백 정리
+            .replace(/\s+/g, ' ')
+            .trim();
+        } else {
+          // 기본 분리: 공백, 언더스코어, 하이픈만
+          text = text.replace(/[_\-\s]+/g, ' ').trim();
+        }
+
+        words = text.split(/\s+/).filter(word => word.length > 0);
+
+        // 숫자 처리
+        if (!options.preserveNumbers) {
+          words = words.map(word => word.replace(/\d/g, ''));
+        }
+
+        return words.filter(word => word.length > 0);
+      } catch (error) {
+        console.error('파싱 오류:', error);
+        return text.split(/\s+/).filter(word => word.length > 0);
+      }
+    }
+
+    function updateResults() {
+      const text = input.value.trim();
+      
+      // 통계 업데이트
+      charCount.textContent = text.length;
+      
+      if (!text) {
+        results.innerHTML = '';
+        wordCount.textContent = '0';
+        detectedCase.textContent = '-';
+        return;
+      }
+
+      const words = parseWords(text);
+      wordCount.textContent = words.length;
+      detectedCase.textContent = detectCaseType(text);
+
+      // 결과 생성
+      results.innerHTML = caseTypes.map(caseType => {
+        const result = caseType.convert(words);
+        return `
+          <div class="result-item">
+            <div class="result-header">
+              <div class="result-label">${caseType.name}</div>
+            </div>
+            <div class="result-description">${caseType.description}</div>
+            <div class="result-value">${result || '(빈 결과)'}</div>
+            <button class="copy-btn" onclick="copyResult('${result}', this)">복사</button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function copyResult(text, btn) {
+      if (!text) return;
+      
+      navigator.clipboard.writeText(text).then(() => {
+        const originalText = btn.textContent;
+        btn.textContent = '복사됨!';
+        btn.classList.add('copied');
+        
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.classList.remove('copied');
+        }, 1000);
+      }).catch(err => {
+        console.error('복사 실패:', err);
+        // 폴백 메서드
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        
+        btn.textContent = '복사됨!';
+        setTimeout(() => btn.textContent = '복사', 1000);
+      });
+    }
+
+    function toggleOption(element) {
+      element.classList.toggle('active');
+      updateResults();
+    }
+
+    // 이벤트 리스너
+    input.addEventListener('input', updateResults);
+    preserveNumbers.addEventListener('click', () => toggleOption(preserveNumbers));
+    removeSpecial.addEventListener('click', () => toggleOption(removeSpecial));
+    smartParse.addEventListener('click', () => toggleOption(smartParse));
+    clearBtn.addEventListener('click', () => {
+      input.value = '';
+      updateResults();
+      input.focus();
+    });
+
+    // 예제 버튼
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('example-btn')) {
+        const example = e.target.dataset.example;
+        input.value = example;
+        updateResults();
+        input.focus();
+      }
+    });
+
+    // 초기 실행
+    updateResults();
+    input.focus();
+
+    // 키보드 단축키
+    document.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'l') {
+        e.preventDefault();
+        input.select();
+      }
+      if (e.ctrlKey && e.key === 'k') {
+        e.preventDefault();
+        clearBtn.click();
+      }
+    });
+  </script>
+</body>
+</html>

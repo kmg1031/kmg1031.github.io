@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>나이 계산기 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { 
+      --bg: #0f1117; 
+      --surface: #1a1d27; 
+      --surface2: #252935;
+      --border: #2e3350; 
+      --accent: #6c63ff; 
+      --accent2: #ff6584; 
+      --text: #e8eaf6; 
+      --text-muted: #7986cb; 
+      --radius: 16px;
+      --shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    body { 
+      background: var(--bg); 
+      color: var(--text); 
+      font-family: 'Segoe UI', system-ui, sans-serif; 
+      min-height: 100vh; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      padding: 24px; 
+    }
+    .back { 
+      align-self: flex-start; 
+      color: var(--text-muted); 
+      text-decoration: none; 
+      font-size: 0.95rem; 
+      margin-bottom: 24px; 
+      transition: color 0.2s;
+    }
+    .back:hover { color: var(--accent); }
+    h1 { 
+      font-size: 1.8rem; 
+      margin-bottom: 24px; 
+      background: linear-gradient(135deg, var(--accent), var(--accent2)); 
+      -webkit-background-clip: text; 
+      -webkit-text-fill-color: transparent; 
+      background-clip: text;
+      text-align: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 720px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .input-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .input-row {
+      display: flex;
+      gap: 16px;
+      align-items: flex-end;
+      margin-bottom: 16px;
+    }
+    .field {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field label {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+    .field input {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 16px;
+      color: var(--text);
+      font-size: 1.1rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .field input:focus { border-color: var(--accent); }
+    .quick-buttons {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .btn-quick {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-quick:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+    .results {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      box-shadow: var(--shadow);
+    }
+    .card-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: var(--accent);
+    }
+    .age-main {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .age-value {
+      font-size: 3rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.1;
+    }
+    .age-unit {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .info-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .info-item:last-child {
+      border-bottom: none;
+    }
+    .info-label {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    .info-value {
+      font-weight: 600;
+      text-align: right;
+    }
+    .zodiac-icon {
+      font-size: 1.4rem;
+      margin-right: 8px;
+    }
+    .milestone {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+    .milestone:last-child {
+      margin-bottom: 0;
+    }
+    .milestone-date {
+      font-weight: 600;
+      color: var(--accent2);
+    }
+    .milestone-desc {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+    .birthday-countdown {
+      text-align: center;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 12px;
+      padding: 16px;
+      color: #fff;
+    }
+    .countdown-value {
+      font-size: 2rem;
+      font-weight: 800;
+    }
+    .countdown-label {
+      font-size: 0.9rem;
+      opacity: 0.9;
+      margin-top: 4px;
+    }
+    .error {
+      color: #ef5350;
+      font-size: 0.85rem;
+      margin-top: 4px;
+    }
+    @media (max-width: 600px) {
+      .input-row {
+        flex-direction: column;
+        gap: 12px;
+      }
+      .results {
+        grid-template-columns: 1fr;
+      }
+      .age-value {
+        font-size: 2.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>🎂 나이 계산기</h1>
+
+  <div class="container">
+    <div class="input-card">
+      <div class="input-row">
+        <div class="field">
+          <label for="birthdate">생년월일</label>
+          <input type="date" id="birthdate" />
+          <div class="error" id="dateError"></div>
+        </div>
+        <div class="field">
+          <label>빠른 설정</label>
+          <div class="quick-buttons">
+            <button class="btn-quick" onclick="setToday()">오늘</button>
+            <button class="btn-quick" onclick="set20YearsAgo()">20년 전</button>
+            <button class="btn-quick" onclick="set30YearsAgo()">30년 전</button>
+            <button class="btn-quick" onclick="clearDate()">초기화</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="results" id="results"></div>
+  </div>
+
+  <script>
+    // 날짜 유틸리티 함수들
+    function formatDate(date) {
+      return date.toLocaleDateString('ko-KR', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    }
+
+    function formatDateShort(date) {
+      return date.toLocaleDateString('ko-KR');
+    }
+
+    function getDayOfWeek(date) {
+      const days = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+      return days[date.getDay()];
+    }
+
+    function getZodiac(year) {
+      const zodiacs = [
+        { animal: '원숭이', icon: '🐒' }, { animal: '닭', icon: '🐓' },
+        { animal: '개', icon: '🐕' }, { animal: '돼지', icon: '🐷' },
+        { animal: '쥐', icon: '🐭' }, { animal: '소', icon: '🐮' },
+        { animal: '호랑이', icon: '🐯' }, { animal: '토끼', icon: '🐰' },
+        { animal: '용', icon: '🐲' }, { animal: '뱀', icon: '🐍' },
+        { animal: '말', icon: '🐴' }, { animal: '양', icon: '🐑' }
+      ];
+      return zodiacs[year % 12];
+    }
+
+    function getDayOfYear(date) {
+      const start = new Date(date.getFullYear(), 0, 0);
+      const diff = date - start;
+      return Math.floor(diff / (1000 * 60 * 60 * 24));
+    }
+
+    function isLeapYear(year) {
+      return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+    }
+
+    // 나이 계산 함수들
+    function calculateKoreanAge(birthDate, today) {
+      return today.getFullYear() - birthDate.getFullYear() + 1;
+    }
+
+    function calculateInternationalAge(birthDate, today) {
+      let age = today.getFullYear() - birthDate.getFullYear();
+      if (today.getMonth() < birthDate.getMonth() || 
+          (today.getMonth() === birthDate.getMonth() && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      return age;
+    }
+
+    function calculateTotalDays(birthDate, today) {
+      const timeDiff = today.getTime() - birthDate.getTime();
+      return Math.floor(timeDiff / (1000 * 3600 * 24));
+    }
+
+    function calculateTotalMonths(birthDate, today) {
+      let months = (today.getFullYear() - birthDate.getFullYear()) * 12;
+      months += today.getMonth() - birthDate.getMonth();
+      if (today.getDate() < birthDate.getDate()) {
+        months--;
+      }
+      return months;
+    }
+
+    function getNextBirthday(birthDate, today) {
+      let nextBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+      if (nextBirthday < today || 
+          (nextBirthday.getTime() === today.getTime() && today.getHours() > 0)) {
+        nextBirthday.setFullYear(today.getFullYear() + 1);
+      }
+      return nextBirthday;
+    }
+
+    function calculateDaysUntilBirthday(birthDate, today) {
+      const nextBirthday = getNextBirthday(birthDate, today);
+      const timeDiff = nextBirthday.getTime() - today.getTime();
+      return Math.ceil(timeDiff / (1000 * 3600 * 24));
+    }
+
+    // 기념일 계산
+    function calculateMilestones(birthDate) {
+      const milestones = [];
+      
+      // 100일, 1000일
+      const day100 = new Date(birthDate.getTime() + (100 * 24 * 60 * 60 * 1000));
+      const day1000 = new Date(birthDate.getTime() + (1000 * 24 * 60 * 60 * 1000));
+      
+      milestones.push({
+        date: formatDate(day100),
+        desc: '태어난 지 100일째 되는 날'
+      });
+      
+      milestones.push({
+        date: formatDate(day1000),
+        desc: '태어난 지 1000일째 되는 날'
+      });
+
+      // 주요 생일 (10주년, 20주년 등)
+      for (let age = 10; age <= 100; age += 10) {
+        const birthday = new Date(birthDate.getFullYear() + age, birthDate.getMonth(), birthDate.getDate());
+        milestones.push({
+          date: formatDate(birthday),
+          desc: `${age}번째 생일`
+        });
+      }
+
+      return milestones.slice(0, 8); // 최대 8개만
+    }
+
+    // 빠른 설정 함수들
+    function setToday() {
+      const today = new Date();
+      document.getElementById('birthdate').value = today.toISOString().split('T')[0];
+      calculateAge();
+    }
+
+    function set20YearsAgo() {
+      const date = new Date();
+      date.setFullYear(date.getFullYear() - 20);
+      document.getElementById('birthdate').value = date.toISOString().split('T')[0];
+      calculateAge();
+    }
+
+    function set30YearsAgo() {
+      const date = new Date();
+      date.setFullYear(date.getFullYear() - 30);
+      document.getElementById('birthdate').value = date.toISOString().split('T')[0];
+      calculateAge();
+    }
+
+    function clearDate() {
+      document.getElementById('birthdate').value = '';
+      document.getElementById('results').innerHTML = '';
+      document.getElementById('dateError').textContent = '';
+    }
+
+    // 메인 계산 함수
+    function calculateAge() {
+      try {
+        const birthdateInput = document.getElementById('birthdate').value;
+        const errorDiv = document.getElementById('dateError');
+        const resultsDiv = document.getElementById('results');
+
+        errorDiv.textContent = '';
+
+        if (!birthdateInput) {
+          resultsDiv.innerHTML = '';
+          return;
+        }
+
+        const birthDate = new Date(birthdateInput);
+        const today = new Date();
+
+        // 유효성 검사
+        if (birthDate > today) {
+          errorDiv.textContent = '미래 날짜는 입력할 수 없습니다.';
+          resultsDiv.innerHTML = '';
+          return;
+        }
+
+        if (birthDate.getFullYear() < 1900) {
+          errorDiv.textContent = '1900년 이후 날짜를 입력해주세요.';
+          resultsDiv.innerHTML = '';
+          return;
+        }
+
+        // 나이 계산
+        const koreanAge = calculateKoreanAge(birthDate, today);
+        const internationalAge = calculateInternationalAge(birthDate, today);
+        const yearAge = today.getFullYear() - birthDate.getFullYear();
+        const totalDays = calculateTotalDays(birthDate, today);
+        const totalWeeks = Math.floor(totalDays / 7);
+        const totalMonths = calculateTotalMonths(birthDate, today);
+        const daysUntilBirthday = calculateDaysUntilBirthday(birthDate, today);
+
+        // 추가 정보
+        const birthDayOfWeek = getDayOfWeek(birthDate);
+        const nextBirthday = getNextBirthday(birthDate, today);
+        const nextBirthdayDayOfWeek = getDayOfWeek(nextBirthday);
+        const dayOfYear = getDayOfYear(birthDate);
+        const zodiac = getZodiac(birthDate.getFullYear());
+        const milestones = calculateMilestones(birthDate);
+
+        // 결과 렌더링
+        resultsDiv.innerHTML = `
+          <div class="result-card">
+            <div class="card-title">🎯 만나이</div>
+            <div class="age-main">
+              <div class="age-value">${internationalAge}</div>
+              <div class="age-unit">세</div>
+            </div>
+            <div class="info-item">
+              <span class="info-label">세는나이 (한국식)</span>
+              <span class="info-value">${koreanAge}세</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">연나이</span>
+              <span class="info-value">${yearAge}세</span>
+            </div>
+          </div>
+
+          <div class="result-card">
+            <div class="card-title">⏱️ 시간 정보</div>
+            <div class="info-item">
+              <span class="info-label">총 살아온 일수</span>
+              <span class="info-value">${totalDays.toLocaleString()}일</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">총 살아온 주수</span>
+              <span class="info-value">${totalWeeks.toLocaleString()}주</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">총 살아온 개월수</span>
+              <span class="info-value">${totalMonths}개월</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">총 살아온 시간</span>
+              <span class="info-value">${(totalDays * 24).toLocaleString()}시간</span>
+            </div>
+          </div>
+
+          <div class="result-card">
+            <div class="card-title">📅 생일 정보</div>
+            ${daysUntilBirthday === 0 ? 
+              `<div class="birthday-countdown">
+                <div class="countdown-value">🎉</div>
+                <div class="countdown-label">오늘이 생일입니다!</div>
+              </div>` :
+              `<div class="birthday-countdown">
+                <div class="countdown-value">${daysUntilBirthday}</div>
+                <div class="countdown-label">일 후 생일</div>
+              </div>`
+            }
+            <div class="info-item">
+              <span class="info-label">태어난 요일</span>
+              <span class="info-value">${birthDayOfWeek}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">다음 생일 요일</span>
+              <span class="info-value">${nextBirthdayDayOfWeek}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">태어난 해의 몇 번째 날</span>
+              <span class="info-value">${dayOfYear}일째</span>
+            </div>
+          </div>
+
+          <div class="result-card">
+            <div class="card-title">🐉 띠 정보</div>
+            <div class="info-item">
+              <span class="info-label">생년의 띠</span>
+              <span class="info-value">
+                <span class="zodiac-icon">${zodiac.icon}</span>${zodiac.animal}띠
+              </span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">태어난 년도</span>
+              <span class="info-value">${birthDate.getFullYear()}년</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">윤년 여부</span>
+              <span class="info-value">${isLeapYear(birthDate.getFullYear()) ? '윤년' : '평년'}</span>
+            </div>
+          </div>
+
+          <div class="result-card">
+            <div class="card-title">🎖️ 기념일</div>
+            ${milestones.map(milestone => `
+              <div class="milestone">
+                <div class="milestone-date">${milestone.date}</div>
+                <div class="milestone-desc">${milestone.desc}</div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+
+      } catch (error) {
+        console.error('Age calculation error:', error);
+        document.getElementById('dateError').textContent = '날짜 계산 중 오류가 발생했습니다.';
+        document.getElementById('results').innerHTML = '';
+      }
+    }
+
+    // 이벤트 리스너 등록
+    document.addEventListener('DOMContentLoaded', function() {
+      const birthdateInput = document.getElementById('birthdate');
+      
+      // 기본값으로 20년 전 설정
+      const defaultDate = new Date();
+      defaultDate.setFullYear(defaultDate.getFullYear() - 25);
+      birthdateInput.value = defaultDate.toISOString().split('T')[0];
+      
+      // 실시간 계산
+      birthdateInput.addEventListener('change', calculateAge);
+      birthdateInput.addEventListener('input', calculateAge);
+      
+      // 초기 계산 실행
+      calculateAge();
+    });
+  </script>
+</body>
+</html>

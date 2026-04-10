@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🔗 URL 인코더/디코더 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3350;
+      --accent: #6c63ff;
+      --accent2: #ff6584;
+      --text: #e8eaf6;
+      --text-muted: #7986cb;
+      --radius: 16px;
+      --shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    
+    body { 
+      background: var(--bg); 
+      color: var(--text); 
+      font-family: 'Segoe UI', system-ui, sans-serif; 
+      min-height: 100vh; 
+      display: flex; 
+      flex-direction: column; 
+      align-items: center; 
+      padding: 24px; 
+    }
+    
+    .back { 
+      align-self: flex-start; 
+      color: var(--text-muted); 
+      text-decoration: none; 
+      font-size: 0.95rem; 
+      margin-bottom: 24px; 
+    }
+    
+    .back:hover { color: var(--accent); }
+    
+    h1 { 
+      font-size: 1.8rem; 
+      margin-bottom: 24px; 
+      background: linear-gradient(135deg, var(--accent), var(--accent2)); 
+      -webkit-background-clip: text; 
+      -webkit-text-fill-color: transparent; 
+      background-clip: text; 
+    }
+    
+    .container { 
+      width: 100%; 
+      max-width: 1000px; 
+      display: flex; 
+      flex-direction: column; 
+      flex: 1; 
+    }
+    
+    .toolbar { 
+      display: flex; 
+      gap: 8px; 
+      margin-bottom: 12px; 
+      flex-wrap: wrap; 
+    }
+    
+    .toolbar button { 
+      background: var(--surface); 
+      border: 1px solid var(--border); 
+      border-radius: 8px; 
+      color: var(--text-muted); 
+      padding: 10px 16px; 
+      font-size: 0.9rem; 
+      font-weight: 600;
+      cursor: pointer; 
+      transition: all 0.2s;
+    }
+    
+    .toolbar button:hover { 
+      border-color: var(--accent); 
+      color: var(--text); 
+    }
+    
+    .toolbar button.primary { 
+      background: var(--accent); 
+      border-color: var(--accent); 
+      color: #fff; 
+    }
+
+    .mode-selector {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+
+    .mode-btn {
+      flex: 1;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .mode-btn.active {
+      background: var(--accent);
+      color: #fff;
+    }
+    
+    .panels { 
+      display: flex; 
+      gap: 16px; 
+      width: 100%; 
+      flex: 1; 
+      min-height: 400px; 
+    }
+    
+    .panel { 
+      flex: 1; 
+      display: flex; 
+      flex-direction: column; 
+    }
+    
+    .panel label { 
+      color: var(--text-muted); 
+      font-size: 0.85rem; 
+      font-weight: 600;
+      margin-bottom: 8px; 
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .char-count {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    
+    .panel textarea { 
+      flex: 1; 
+      background: var(--surface); 
+      border: 1px solid var(--border); 
+      border-radius: var(--radius); 
+      color: var(--text); 
+      padding: 16px; 
+      font-size: 0.9rem; 
+      line-height: 1.5; 
+      resize: none; 
+      outline: none; 
+      font-family: 'Consolas', 'Monaco', monospace; 
+    }
+    
+    .panel textarea:focus { 
+      border-color: var(--accent); 
+      box-shadow: 0 0 0 2px rgba(108, 99, 255, 0.2);
+    }
+
+    .panel .output {
+      background: var(--surface2);
+    }
+
+    .url-examples {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 16px;
+      font-size: 0.85rem;
+    }
+
+    .url-examples h3 {
+      color: var(--text);
+      margin-bottom: 8px;
+      font-size: 0.9rem;
+    }
+
+    .url-examples .example {
+      color: var(--text-muted);
+      margin: 4px 0;
+      font-family: 'Consolas', monospace;
+    }
+
+    .url-examples .example:hover {
+      color: var(--accent);
+      cursor: pointer;
+    }
+    
+    .error { 
+      color: var(--accent2); 
+      font-size: 0.85rem; 
+      margin-top: 8px; 
+      min-height: 1.2em; 
+    }
+
+    .success {
+      color: #4ade80;
+      font-size: 0.85rem;
+      margin-top: 8px;
+      min-height: 1.2em;
+    }
+    
+    @media (max-width: 640px) { 
+      .panels { 
+        flex-direction: column; 
+      }
+
+      .toolbar {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>🔗 URL 인코더/디코더</h1>
+
+  <div class="container">
+    <div class="mode-selector">
+      <button class="mode-btn active" data-mode="encode">인코딩</button>
+      <button class="mode-btn" data-mode="decode">디코딩</button>
+      <button class="mode-btn" data-mode="auto">자동감지</button>
+    </div>
+
+    <div class="toolbar">
+      <button class="primary" id="btn-process">처리</button>
+      <button id="btn-swap">⇄ 교체</button>
+      <button id="btn-copy">복사</button>
+      <button id="btn-clear">지우기</button>
+    </div>
+
+    <div class="panels">
+      <div class="panel">
+        <label>
+          입력
+          <span class="char-count" id="input-count">0 문자</span>
+        </label>
+        <textarea id="input" placeholder="URL을 입력하세요...
+예: https://example.com/검색?q=한글
+또는 이미 인코딩된 URL을 붙여넣으세요"></textarea>
+      </div>
+      <div class="panel">
+        <label>
+          출력
+          <span class="char-count" id="output-count">0 문자</span>
+        </label>
+        <textarea id="output" class="output" readonly></textarea>
+      </div>
+    </div>
+    
+    <div class="error" id="error"></div>
+    <div class="success" id="success"></div>
+
+    <div class="url-examples">
+      <h3>📝 예제 URL (클릭하여 입력)</h3>
+      <div class="example" data-url="https://example.com/검색?q=한글 테스트&category=웹">한글 포함 URL</div>
+      <div class="example" data-url="https://example.com/path/to/파일.html?param=값1&other=값2#섹션">파일 경로 + 한글</div>
+      <div class="example" data-url="https://example.com/검색?q=Hello%20World&lang=ko">혼합 인코딩</div>
+      <div class="example" data-url="mailto:user@example.com?subject=안녕하세요&body=메일 본문">mailto URL</div>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('input');
+    const output = document.getElementById('output');
+    const error = document.getElementById('error');
+    const success = document.getElementById('success');
+    const modeButtons = document.querySelectorAll('.mode-btn');
+    const inputCount = document.getElementById('input-count');
+    const outputCount = document.getElementById('output-count');
+    const examples = document.querySelectorAll('.example');
+
+    let currentMode = 'encode';
+
+    // 모드 변경 처리
+    modeButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        modeButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMode = btn.dataset.mode;
+        showMessage('');
+        
+        if (input.value.trim()) {
+          processUrl();
+        }
+      });
+    });
+
+    // 예제 클릭 처리
+    examples.forEach(example => {
+      example.addEventListener('click', () => {
+        input.value = example.dataset.url;
+        updateCharCount();
+        processUrl();
+      });
+    });
+
+    // 글자 수 업데이트
+    function updateCharCount() {
+      inputCount.textContent = `${input.value.length} 문자`;
+      outputCount.textContent = `${output.value.length} 문자`;
+    }
+
+    // 메시지 표시
+    function showMessage(msg, type = 'error') {
+      error.textContent = type === 'error' ? msg : '';
+      success.textContent = type === 'success' ? msg : '';
+    }
+
+    // URL 인코딩 여부 감지
+    function isUrlEncoded(str) {
+      try {
+        // decodeURIComponent를 시도해보고, 원본과 다르면 인코딩된 것
+        const decoded = decodeURIComponent(str);
+        const reencoded = encodeURIComponent(decoded);
+        
+        // 특정 패턴으로 인코딩된 것 같은지 확인
+        return /%[0-9A-Fa-f]{2}/.test(str) && str !== reencoded;
+      } catch (e) {
+        return false;
+      }
+    }
+
+    // URL 컴포넌트별 인코딩
+    function smartEncodeUrl(url) {
+      try {
+        // 이미 완전히 인코딩된 URL인지 확인
+        if (url === encodeURIComponent(url)) {
+          return url;
+        }
+
+        // URL 파싱을 위해 URL 생성자 사용
+        const urlObj = new URL(url);
+        
+        // 각 컴포넌트별로 적절히 인코딩
+        const encodedPathname = urlObj.pathname.split('/').map(segment => 
+          encodeURIComponent(segment)
+        ).join('/');
+        
+        const encodedSearch = urlObj.search ? 
+          '?' + urlObj.search.slice(1).split('&').map(param => {
+            const [key, value] = param.split('=');
+            if (value === undefined) return encodeURIComponent(key);
+            return encodeURIComponent(key) + '=' + encodeURIComponent(value);
+          }).join('&') 
+          : '';
+
+        const encodedHash = urlObj.hash ? 
+          '#' + encodeURIComponent(urlObj.hash.slice(1)) 
+          : '';
+
+        return urlObj.protocol + '//' + urlObj.host + encodedPathname + encodedSearch + encodedHash;
+      } catch (e) {
+        // URL 파싱에 실패하면 전체를 인코딩
+        return encodeURIComponent(url);
+      }
+    }
+
+    // URL 처리 함수
+    function processUrl() {
+      const inputValue = input.value.trim();
+      showMessage('');
+
+      if (!inputValue) {
+        output.value = '';
+        updateCharCount();
+        return;
+      }
+
+      try {
+        let result = '';
+        let detectedMode = currentMode;
+
+        // 자동감지 모드
+        if (currentMode === 'auto') {
+          detectedMode = isUrlEncoded(inputValue) ? 'decode' : 'encode';
+        }
+
+        if (detectedMode === 'encode') {
+          result = smartEncodeUrl(inputValue);
+          showMessage('✓ URL이 인코딩되었습니다', 'success');
+        } else {
+          result = decodeURIComponent(inputValue);
+          showMessage('✓ URL이 디코딩되었습니다', 'success');
+        }
+
+        output.value = result;
+      } catch (e) {
+        showMessage('처리 중 오류가 발생했습니다: ' + e.message);
+        output.value = '';
+      }
+
+      updateCharCount();
+    }
+
+    // 입출력 교체
+    function swapValues() {
+      const temp = input.value;
+      input.value = output.value;
+      output.value = temp;
+      updateCharCount();
+      showMessage('✓ 입력과 출력이 교체되었습니다', 'success');
+    }
+
+    // 복사 기능
+    async function copyToClipboard() {
+      if (!output.value.trim()) {
+        showMessage('복사할 내용이 없습니다');
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(output.value);
+        showMessage('✓ 클립보드에 복사되었습니다', 'success');
+      } catch (e) {
+        // 클립보드 API가 실패하면 폴백 방법 사용
+        const textArea = document.createElement('textarea');
+        textArea.value = output.value;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showMessage('✓ 클립보드에 복사되었습니다', 'success');
+      }
+    }
+
+    // 지우기
+    function clearAll() {
+      input.value = '';
+      output.value = '';
+      showMessage('');
+      updateCharCount();
+      input.focus();
+    }
+
+    // 이벤트 리스너
+    document.getElementById('btn-process').addEventListener('click', processUrl);
+    document.getElementById('btn-swap').addEventListener('click', swapValues);
+    document.getElementById('btn-copy').addEventListener('click', copyToClipboard);
+    document.getElementById('btn-clear').addEventListener('click', clearAll);
+
+    // 실시간 처리
+    input.addEventListener('input', () => {
+      updateCharCount();
+      if (input.value.trim()) {
+        processUrl();
+      } else {
+        output.value = '';
+        showMessage('');
+        updateCharCount();
+      }
+    });
+
+    // 초기화
+    updateCharCount();
+    input.focus();
+  </script>
+</body>
+</html>
