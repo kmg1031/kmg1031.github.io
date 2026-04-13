@@ -63,6 +63,10 @@ const TOOLS = [
   { id: 'case-converter',     name: '케이스 변환기',   icon: '🔤', path: '../tools/case-converter/index.html' },
 ];
 
+// ===== 연구소 목록 =====
+const LABS = [
+];
+
 // ===== 카드 렌더링 =====
 function renderCards(items, gridId) {
   const grid = document.getElementById(gridId);
@@ -86,6 +90,7 @@ function renderCards(items, gridId) {
 
 renderCards(GAMES, 'game-grid');
 renderCards(TOOLS, 'tool-grid');
+renderCards(LABS, 'lab-grid');
 
 // ===== 탭 전환 =====
 document.querySelectorAll('.tab').forEach(btn => {
