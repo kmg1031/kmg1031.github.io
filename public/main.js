@@ -66,6 +66,7 @@ const TOOLS = [
 // ===== 연구소 목록 =====
 const LABS = [
   { id: 'aircon-simulator', name: '에어컨 시뮬레이터', icon: '❄️', path: '../labs/aircon-simulator/index.html' },
+  { id: 'elevator-simulator', name: '엘리베이터 시뮬레이터', icon: '🏢', path: '../labs/elevator-simulator/index.html' },
 ];
 
 // ===== 카드 렌더링 =====

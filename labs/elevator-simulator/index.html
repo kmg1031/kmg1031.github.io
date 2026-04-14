@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>엘리베이터 시뮬레이터 – Handshake Labs</title>
+  <link rel="stylesheet" href="../../public/common.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page-wrap">
+  <h1 class="page-title">🏢 엘리베이터 시뮬레이터</h1>
+  <p class="subtitle">건물의 엘리베이터 운행 시뮬레이션</p>
+
+  <!-- Control Bar -->
+  <div class="control-bar card">
+    <div class="control-row">
+      <div class="control-group">
+        <label>알고리즘</label>
+        <select id="algorithmSelect">
+          <option value="LOOK">LOOK</option>
+          <option value="SCAN">SCAN</option>
+          <option value="FCFS">FCFS</option>
+          <option value="SSTF">SSTF</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <label>속도</label>
+        <div class="speed-btns" id="speedBtns">
+          <button class="speed-btn active" data-speed="1">x1</button>
+          <button class="speed-btn" data-speed="2">x2</button>
+          <button class="speed-btn" data-speed="5">x5</button>
+          <button class="speed-btn" data-speed="10">x10</button>
+        </div>
+      </div>
+      <button class="pause-btn" id="pauseBtn">⏸ 일시정지</button>
+    </div>
+  </div>
+
+  <!-- Main Area -->
+  <div class="main-area">
+    <!-- Building -->
+    <div class="building card">
+      <div class="building-inner" id="buildingInner">
+        <!-- Floors rendered by JS -->
+      </div>
+    </div>
+
+    <!-- Internal Panel -->
+    <div class="panel card">
+      <div class="panel-display">
+        <div class="floor-display" id="floorDisplay">1F</div>
+        <div class="direction-display" id="directionDisplay">-</div>
+      </div>
+      <div class="panel-buttons" id="panelButtons">
+        <!-- Floor buttons rendered by JS -->
+      </div>
+      <div class="panel-actions">
+        <button class="door-btn" id="doorOpenBtn" title="문 열기">◁▷</button>
+        <button class="door-btn" id="doorCloseBtn" title="문 닫기">▷◁</button>
+        <button class="emergency-btn" id="emergencyBtn" title="비상 정지">⛔</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats card">
+    <div class="stats-header">📊 통계</div>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-label">평균 대기</div>
+        <div class="stat-value" id="statWait">0.0초</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">평균 이동</div>
+        <div class="stat-value" id="statTravel">0.0초</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">운송 인원</div>
+        <div class="stat-value" id="statServed">0명</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">이동 거리</div>
+        <div class="stat-value" id="statDistance">0층</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-label">대기 인원</div>
+        <div class="stat-value" id="statWaiting">0명</div>
+      </div>
+      <div class="stat-item">
+        <button class="reset-btn" id="resetStatsBtn">리셋</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auto Passenger -->
+  <div class="auto-section card">
+    <div class="stats-header">🚶 자동 승객 설정</div>
+    <div class="auto-row">
+      <label>자동 생성</label>
+      <button class="toggle-btn" id="autoToggle">OFF</button>
+    </div>
+    <div class="auto-row">
+      <label>생성 빈도</label>
+      <input type="range" id="frequencySlider" min="1" max="10" value="5" />
+      <span class="slider-val" id="frequencyVal">보통</span>
+    </div>
+  </div>
+
+  </div>
+  <script src="../../public/nav.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
