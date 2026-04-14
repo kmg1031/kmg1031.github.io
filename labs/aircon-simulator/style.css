@@ -1,0 +1,141 @@
+:root {
+  --cool: #00bcd4; --heat: #ff5722; --fan: #4caf50;
+}
+.page-title { margin-bottom: 8px; }
+.subtitle { color: var(--text-muted); font-size: 0.85rem; margin-bottom: 28px; }
+
+/* === Room === */
+.room {
+  position: relative; width: 100%; max-width: 520px;
+  padding: 28px 24px 24px; overflow: hidden;
+}
+.room-temp-label {
+  text-align: center; color: var(--text-muted); font-size: 0.8rem;
+  margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px;
+}
+.room-temp {
+  text-align: center; font-size: 4rem; font-weight: 800;
+  transition: color 0.5s;
+}
+.room-temp .unit { font-size: 1.5rem; font-weight: 400; color: var(--text-muted); }
+.room-humidity {
+  text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 20px;
+}
+
+/* === AC Unit Visual === */
+.ac-unit {
+  position: relative; width: 100%; height: 80px;
+  background: linear-gradient(180deg, #2a2d3a 0%, #1e2130 100%);
+  border-radius: 16px 16px 4px 4px; margin-bottom: 20px;
+  border: 1px solid var(--border); overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+.ac-unit .brand { color: var(--text-muted); font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; }
+.ac-unit .led {
+  position: absolute; top: 12px; right: 16px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: #555; transition: background 0.3s, box-shadow 0.3s;
+}
+.ac-unit .led.on { background: #4caf50; box-shadow: 0 0 8px #4caf50; }
+.ac-vent {
+  width: 100%; height: 16px;
+  background: repeating-linear-gradient(90deg, var(--border) 0px, var(--border) 2px, transparent 2px, transparent 8px);
+  border-radius: 0 0 8px 8px; position: relative; overflow: hidden;
+}
+
+/* === Wind Particles === */
+.wind-container {
+  position: absolute; bottom: -30px; left: 0; right: 0; height: 60px;
+  pointer-events: none; overflow: hidden;
+}
+.wind-particle {
+  position: absolute; width: 30px; height: 2px; border-radius: 2px;
+  opacity: 0; animation: windFall 2s linear infinite;
+}
+@keyframes windFall {
+  0% { opacity: 0; transform: translateY(0) scaleX(0.5); }
+  20% { opacity: 0.6; }
+  100% { opacity: 0; transform: translateY(55px) scaleX(1.5); }
+}
+
+/* === Controls === */
+.controls { display: flex; flex-direction: column; gap: 16px; }
+
+.power-row { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.power-btn {
+  width: 64px; height: 64px; border-radius: 50%; border: 3px solid var(--border);
+  background: var(--surface2); color: var(--text-muted); font-size: 1.6rem;
+  cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center;
+}
+.power-btn.on { border-color: #4caf50; color: #4caf50; box-shadow: 0 0 20px rgba(76,175,80,0.3); }
+.power-btn:hover { transform: scale(1.05); }
+
+.target-control {
+  display: flex; align-items: center; justify-content: center; gap: 20px;
+}
+.temp-btn {
+  width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--border);
+  background: var(--surface2); color: var(--text); font-size: 1.4rem; font-weight: 700;
+  cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+}
+.temp-btn:hover { border-color: var(--accent); background: rgba(108,99,255,0.15); }
+.temp-btn:active { transform: scale(0.92); }
+.target-display { text-align: center; min-width: 100px; }
+.target-display .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.target-display .value { font-size: 2.2rem; font-weight: 700; }
+
+/* === Mode & Fan === */
+.option-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+.option-btn {
+  padding: 8px 16px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface2); color: var(--text-muted); font-size: 0.85rem;
+  cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 6px;
+}
+.option-btn:hover { border-color: var(--text-muted); }
+.option-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(108,99,255,0.12); }
+.option-btn.active.cool { border-color: var(--cool); color: var(--cool); background: rgba(0,188,212,0.12); }
+.option-btn.active.heat { border-color: var(--heat); color: var(--heat); background: rgba(255,87,34,0.12); }
+.option-btn.active.fan { border-color: var(--fan); color: var(--fan); background: rgba(76,175,80,0.12); }
+.option-btn.active.auto { border-color: #ffc107; color: #ffc107; background: rgba(255,193,7,0.12); }
+
+/* === Info Panel === */
+.info-panel {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px;
+}
+.info-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 12px; text-align: center;
+}
+.info-card .info-label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.info-card .info-value { font-size: 1.1rem; font-weight: 700; }
+
+/* === Disabled state === */
+.disabled { opacity: 0.35; pointer-events: none; }
+
+/* === Outdoor Section === */
+.outdoor {
+  width: 100%; max-width: 520px; margin-top: 16px;
+  padding: 16px 20px;
+}
+.outdoor-header {
+  font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 1px; margin-bottom: 12px;
+}
+.outdoor-row {
+  display: flex; justify-content: space-between; align-items: center;
+}
+.outdoor-item { text-align: center; }
+.outdoor-item .val { font-size: 1.2rem; font-weight: 700; }
+.outdoor-item .lbl { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+
+.slider-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 4px; }
+.slider-row label { font-size: 0.8rem; color: var(--text-muted); min-width: 80px; }
+.slider-row input[type="range"] {
+  -webkit-appearance: none; appearance: none; width: 180px; height: 6px;
+  border-radius: 3px; background: var(--border); outline: none;
+}
+.slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent); cursor: pointer;
+}
+.slider-row .slider-val { font-size: 0.85rem; font-weight: 600; min-width: 40px; text-align: right; }

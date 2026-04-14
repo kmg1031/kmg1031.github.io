@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>에어컨 시뮬레이터 – Handshake Labs</title>
+  <link rel="stylesheet" href="../../public/common.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page-wrap">
+  <h1 class="page-title">❄️ 에어컨 시뮬레이터</h1>
+  <p class="subtitle">실내 온도를 제어하는 에어컨 시뮬레이션</p>
+
+  <div class="room card">
+    <!-- AC Unit Visual -->
+    <div class="ac-unit">
+      <span class="brand">Handshake Climate</span>
+      <div class="led" id="led"></div>
+      <div class="wind-container" id="windContainer"></div>
+    </div>
+    <div class="ac-vent"></div>
+
+    <div style="height: 16px;"></div>
+    <div class="room-temp-label">실내 온도</div>
+    <div class="room-temp" id="roomTemp">28.0<span class="unit">°C</span></div>
+    <div class="room-humidity" id="roomHumidity">습도 60%</div>
+
+    <div class="controls">
+      <!-- Power -->
+      <div class="power-row">
+        <button class="power-btn" id="powerBtn" title="전원">⏻</button>
+      </div>
+
+      <!-- Target Temp -->
+      <div id="controlsGroup">
+        <div class="target-control">
+          <button class="temp-btn" id="tempDown">−</button>
+          <div class="target-display">
+            <div class="label">설정 온도</div>
+            <div class="value" id="targetTemp">24</div>
+          </div>
+          <button class="temp-btn" id="tempUp">+</button>
+        </div>
+
+        <!-- Mode -->
+        <div style="margin-top: 16px;">
+          <div class="room-temp-label" style="margin-bottom: 8px;">모드</div>
+          <div class="option-row" id="modeRow">
+            <button class="option-btn cool active" data-mode="cool">❄️ 냉방</button>
+            <button class="option-btn heat" data-mode="heat">🔥 난방</button>
+            <button class="option-btn fan" data-mode="fan">🌀 송풍</button>
+            <button class="option-btn auto" data-mode="auto">🔄 자동</button>
+          </div>
+        </div>
+
+        <!-- Fan Speed -->
+        <div style="margin-top: 16px;">
+          <div class="room-temp-label" style="margin-bottom: 8px;">풍량</div>
+          <div class="option-row" id="fanRow">
+            <button class="option-btn" data-fan="1">미풍</button>
+            <button class="option-btn active" data-fan="2">약풍</button>
+            <button class="option-btn" data-fan="3">강풍</button>
+            <button class="option-btn" data-fan="4">터보</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info -->
+    <div class="info-panel" id="infoPanel">
+      <div class="info-card">
+        <div class="info-label">소비 전력</div>
+        <div class="info-value" id="infoWatt">0 W</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">누적 전기료</div>
+        <div class="info-value" id="infoCost">0 원</div>
+      </div>
+      <div class="info-card">
+        <div class="info-label">가동 시간</div>
+        <div class="info-value" id="infoTime">0:00</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Outdoor Conditions -->
+  <div class="outdoor card">
+    <div class="outdoor-header">🌤️ 외부 환경 설정</div>
+    <div class="slider-row">
+      <label>외부 온도</label>
+      <input type="range" id="outdoorTempSlider" min="-10" max="45" value="33" />
+      <span class="slider-val" id="outdoorTempVal">33°C</span>
+    </div>
+    <div class="slider-row" style="margin-top: 8px;">
+      <label>외부 습도</label>
+      <input type="range" id="outdoorHumSlider" min="10" max="100" value="70" />
+      <span class="slider-val" id="outdoorHumVal">70%</span>
+    </div>
+    <div class="slider-row" style="margin-top: 8px;">
+      <label>단열 성능</label>
+      <input type="range" id="insulationSlider" min="1" max="10" value="5" />
+      <span class="slider-val" id="insulationVal">5</span>
+    </div>
+  </div>
+
+  </div>
+  <script src="../../public/nav.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
