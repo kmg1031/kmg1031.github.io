@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>도로 시뮬레이터 – Handshake Labs</title>
+  <link rel="stylesheet" href="../../public/common.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="layout">
+    <div class="canvas-area">
+      <h1 class="page-title">🚗 도로 시뮬레이터</h1>
+      <canvas id="canvas"></canvas>
+      <div class="hud"><span id="speedDisplay">0 대</span></div>
+    </div>
+
+    <div class="panel card">
+      <h2 class="panel-title">설정</h2>
+
+      <div class="field">
+        <label>도로 길이 <span class="val" id="valRoadLen">200</span>m</label>
+        <input type="range" id="sliderRoadLen" min="200" max="5000" step="100" value="200" />
+      </div>
+
+      <hr />
+      <h3 class="panel-subtitle">차량 속도 (km/h)</h3>
+
+      <div class="field">
+        <label>최소 <span class="val" id="valMinSpd">30</span></label>
+        <input type="range" id="sliderMinSpd" min="10" max="200" step="5" value="30" />
+      </div>
+      <div class="field">
+        <label>최대 <span class="val" id="valMaxSpd">70</span></label>
+        <input type="range" id="sliderMaxSpd" min="10" max="200" step="5" value="70" />
+      </div>
+      <div class="field">
+        <label>평균 <span class="val" id="valAvgSpd">50</span></label>
+        <input type="range" id="sliderAvgSpd" min="10" max="200" step="5" value="50" />
+      </div>
+
+      <hr />
+      <h3 class="panel-subtitle">차량 생성</h3>
+
+      <div class="field">
+        <label>생성 주기 <span class="val" id="valInterval">2.0</span>초</label>
+        <input type="range" id="sliderInterval" min="0.3" max="10" step="0.1" value="2" />
+      </div>
+      <div class="field">
+        <label>최대 차량 수 <span class="val" id="valMaxCars">50</span></label>
+        <input type="range" id="sliderMaxCars" min="1" max="200" step="1" value="50" />
+      </div>
+
+      <hr />
+      <h3 class="panel-subtitle">차선 변경</h3>
+
+      <div class="field toggle-field">
+        <label>추월</label>
+        <button class="toggle-btn active" id="toggleOvertake">ON</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../public/nav.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
