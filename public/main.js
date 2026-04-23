@@ -62,6 +62,8 @@ const TOOLS = [
   { id: 'image-resizer',      name: '이미지 리사이저', icon: '🖼️', path: '../tools/image-resizer/index.html' },
   { id: 'age-calculator',     name: '나이 계산기',    icon: '🎂', path: '../tools/age-calculator/index.html' },
   { id: 'case-converter',     name: '케이스 변환기',   icon: '🔤', path: '../tools/case-converter/index.html' },
+  { id: 'roulette',           name: '룰렛',           icon: '🎡', path: '../tools/roulette/index.html' },
+  { id: 'ladder',             name: '사다리 타기',     icon: '🪜', path: '../tools/ladder/index.html' },
 ];
 
 // ===== 연구소 목록 =====

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>사다리 타기 – Handshake Tools</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --bg: #0f1117; --surface: #1a1d27; --border: #2e3350; --accent: #6c63ff; --accent2: #ff6584; --text: #e8eaf6; --text-muted: #7986cb; --radius: 16px; }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 24px; }
+    .back { align-self: flex-start; color: var(--text-muted); text-decoration: none; font-size: 0.95rem; margin-bottom: 24px; }
+    .back:hover { color: var(--accent); }
+    h1 { font-size: 1.8rem; margin-bottom: 24px; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+    .container { width: 100%; max-width: 600px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 16px; }
+
+    .setup-row { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+    .setup-row label { font-size: 0.9rem; color: var(--text-muted); min-width: 60px; }
+    .setup-row input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 10px 12px; font-size: 0.95rem; outline: none; }
+    .setup-row input:focus { border-color: var(--accent); }
+
+    .names-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .name-input { width: 80px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); padding: 8px 10px; font-size: 0.85rem; text-align: center; outline: none; }
+    .name-input:focus { border-color: var(--accent); }
+    .name-input.result-input { border-color: var(--accent2); color: var(--accent2); }
+
+    .btn-row { display: flex; gap: 8px; }
+    .btn { flex: 1; padding: 14px 20px; border-radius: 12px; border: none; background: var(--accent); color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer; }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary { background: var(--surface); border: 1px solid var(--border); color: var(--text-muted); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); opacity: 1; }
+
+    .ladder-wrap { overflow-x: auto; display: flex; justify-content: center; margin: 16px 0; }
+    canvas { display: block; border-radius: 8px; }
+
+    .click-hint { text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 8px; }
+
+    .section-label { font-size: 0.9rem; color: var(--text-muted); margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <a class="back" href="../../public/index.html">← 돌아가기</a>
+  <h1>🪜 사다리 타기</h1>
+
+  <div class="container">
+    <div class="card">
+      <div class="setup-row">
+        <label>인원 수</label>
+        <input type="number" id="count" value="4" min="2" max="10" />
+      </div>
+      <div class="section-label">참가자 이름</div>
+      <div class="names-row" id="names-row"></div>
+      <div class="section-label">결과 (숨김)</div>
+      <div class="names-row" id="results-row"></div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="btn-reset">초기화</button>
+        <button class="btn" id="btn-generate">사다리 생성</button>
+      </div>
+    </div>
+
+    <div class="card" id="ladder-card" style="display:none;">
+      <div class="ladder-wrap">
+        <canvas id="ladder"></canvas>
+      </div>
+      <p class="click-hint" id="hint">상단 이름을 클릭하면 결과를 확인합니다</p>
+      <div class="btn-row" style="margin-top:12px;">
+        <button class="btn" id="btn-all">전체 공개</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const countInput = document.getElementById('count');
+    const namesRow = document.getElementById('names-row');
+    const resultsRow = document.getElementById('results-row');
+    const ladderCard = document.getElementById('ladder-card');
+    const canvas = document.getElementById('ladder');
+    const ctx = canvas.getContext('2d');
+    const hintEl = document.getElementById('hint');
+
+    const COLORS = ['#6c63ff','#ff6584','#43e97b','#f7971e','#00c9ff','#e040fb','#ff5252','#64ffda','#fdd835','#7c4dff'];
+
+    let count = 4;
+    let names = [];
+    let results = [];
+    let rungs = []; // [{col, row}] horizontal connections
+    let paths = []; // traced paths for each column
+    let revealed = [];
+    let ladderGenerated = false;
+
+    // Layout
+    const COL_W = 80;
+    const PAD_X = 50;
+    const PAD_TOP = 50;
+    const PAD_BOT = 50;
+    const ROW_H = 30;
+    const ROWS = 12;
+
+    function buildNameInputs() {
+      count = Math.max(2, Math.min(10, parseInt(countInput.value) || 4));
+      namesRow.innerHTML = '';
+      resultsRow.innerHTML = '';
+      names = [];
+      results = [];
+      for (let i = 0; i < count; i++) {
+        const inp = document.createElement('input');
+        inp.className = 'name-input';
+        inp.placeholder = `참가자${i + 1}`;
+        inp.value = `참가자${i + 1}`;
+        namesRow.appendChild(inp);
+        names.push(inp);
+
+        const res = document.createElement('input');
+        res.className = 'name-input result-input';
+        res.placeholder = `결과${i + 1}`;
+        res.value = '';
+        resultsRow.appendChild(res);
+        results.push(res);
+      }
+    }
+
+    function generateRungs() {
+      rungs = [];
+      for (let row = 0; row < ROWS; row++) {
+        // Shuffle columns and place rungs without adjacent conflicts
+        const used = new Set();
+        const cols = [...Array(count - 1).keys()];
+        // Shuffle
+        for (let i = cols.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [cols[i], cols[j]] = [cols[j], cols[i]];
+        }
+        for (const col of cols) {
+          if (used.has(col) || used.has(col - 1) || used.has(col + 1)) continue;
+          if (Math.random() < 0.45) {
+            rungs.push({ col, row });
+            used.add(col);
+          }
+        }
+      }
+      // Ensure at least some rungs
+      if (rungs.length < ROWS) {
+        for (let row = 0; row < ROWS; row++) {
+          const col = Math.floor(Math.random() * (count - 1));
+          if (!rungs.some(r => r.row === row && (r.col === col || r.col === col - 1 || r.col === col + 1))) {
+            rungs.push({ col, row });
+          }
+        }
+      }
+    }
+
+    function tracePath(startCol) {
+      let col = startCol;
+      const path = [{ x: PAD_X + col * COL_W, y: PAD_TOP }];
+
+      for (let row = 0; row < ROWS; row++) {
+        const y = PAD_TOP + (row + 0.5) * ROW_H;
+
+        // Check right rung
+        const rightRung = rungs.find(r => r.row === row && r.col === col);
+        // Check left rung
+        const leftRung = rungs.find(r => r.row === row && r.col === col - 1);
+
+        if (rightRung) {
+          path.push({ x: PAD_X + col * COL_W, y });
+          col++;
+          path.push({ x: PAD_X + col * COL_W, y });
+        } else if (leftRung) {
+          path.push({ x: PAD_X + col * COL_W, y });
+          col--;
+          path.push({ x: PAD_X + col * COL_W, y });
+        }
+      }
+
+      path.push({ x: PAD_X + col * COL_W, y: PAD_TOP + ROWS * ROW_H });
+      return { path, endCol: col };
+    }
+
+    function drawLadder() {
+      const w = PAD_X * 2 + (count - 1) * COL_W;
+      const h = PAD_TOP + ROWS * ROW_H + PAD_BOT;
+      canvas.width = w;
+      canvas.height = h;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Vertical lines
+      ctx.strokeStyle = '#2e3350';
+      ctx.lineWidth = 3;
+      for (let i = 0; i < count; i++) {
+        const x = PAD_X + i * COL_W;
+        ctx.beginPath();
+        ctx.moveTo(x, PAD_TOP);
+        ctx.lineTo(x, PAD_TOP + ROWS * ROW_H);
+        ctx.stroke();
+      }
+
+      // Rungs
+      ctx.strokeStyle = '#4a4f6e';
+      ctx.lineWidth = 3;
+      for (const r of rungs) {
+        const x1 = PAD_X + r.col * COL_W;
+        const x2 = PAD_X + (r.col + 1) * COL_W;
+        const y = PAD_TOP + (r.row + 0.5) * ROW_H;
+        ctx.beginPath();
+        ctx.moveTo(x1, y);
+        ctx.lineTo(x2, y);
+        ctx.stroke();
+      }
+
+      // Top names
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      for (let i = 0; i < count; i++) {
+        const x = PAD_X + i * COL_W;
+        ctx.fillStyle = revealed[i] ? COLORS[i % COLORS.length] : '#7986cb';
+        ctx.fillText(names[i].value || `참가자${i + 1}`, x, PAD_TOP - 8);
+
+        // Clickable circle
+        ctx.beginPath();
+        ctx.arc(x, PAD_TOP - 24, 4, 0, Math.PI * 2);
+        ctx.fillStyle = revealed[i] ? COLORS[i % COLORS.length] : '#4a4f6e';
+        ctx.fill();
+      }
+
+      // Bottom results (hidden or revealed)
+      ctx.textBaseline = 'top';
+      for (let i = 0; i < count; i++) {
+        const endCol = paths[i].endCol;
+        const x = PAD_X + endCol * COL_W;
+        if (revealed[i]) {
+          ctx.fillStyle = COLORS[i % COLORS.length];
+          ctx.fillText(results[i].value || `결과${i + 1}`, x, PAD_TOP + ROWS * ROW_H + 12);
+        } else {
+          ctx.fillStyle = '#3a3f5e';
+          ctx.fillText('?', x, PAD_TOP + ROWS * ROW_H + 12);
+        }
+      }
+
+      // Draw revealed paths
+      for (let i = 0; i < count; i++) {
+        if (!revealed[i]) continue;
+        const p = paths[i].path;
+        ctx.strokeStyle = COLORS[i % COLORS.length];
+        ctx.lineWidth = 4;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p[0].x, p[0].y);
+        for (let j = 1; j < p.length; j++) {
+          ctx.lineTo(p[j].x, p[j].y);
+        }
+        ctx.stroke();
+      }
+    }
+
+    function animatePath(colIdx, callback) {
+      const p = paths[colIdx].path;
+      const color = COLORS[colIdx % COLORS.length];
+      let segIdx = 0;
+      let progress = 0;
+      const speed = 0.08;
+
+      function step() {
+        if (segIdx >= p.length - 1) {
+          revealed[colIdx] = true;
+          drawLadder();
+          if (callback) callback();
+          return;
+        }
+
+        progress += speed;
+        if (progress >= 1) {
+          progress = 0;
+          segIdx++;
+          if (segIdx >= p.length - 1) {
+            revealed[colIdx] = true;
+            drawLadder();
+            if (callback) callback();
+            return;
+          }
+        }
+
+        drawLadder();
+
+        // Draw partial animated path
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 4;
+        ctx.lineJoin = 'round';
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(p[0].x, p[0].y);
+        for (let j = 1; j <= segIdx; j++) {
+          ctx.lineTo(p[j].x, p[j].y);
+        }
+        // Partial segment
+        const fromPt = p[segIdx];
+        const toPt = p[segIdx + 1];
+        const cx = fromPt.x + (toPt.x - fromPt.x) * progress;
+        const cy = fromPt.y + (toPt.y - fromPt.y) * progress;
+        ctx.lineTo(cx, cy);
+        ctx.stroke();
+
+        // Ball
+        ctx.beginPath();
+        ctx.arc(cx, cy, 6, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.beginPath();
+        ctx.arc(cx - 1.5, cy - 1.5, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        requestAnimationFrame(step);
+      }
+      step();
+    }
+
+    // Canvas click
+    canvas.addEventListener('click', e => {
+      if (!ladderGenerated) return;
+      const rect = canvas.getBoundingClientRect();
+      const mx = (e.clientX - rect.left) * (canvas.width / rect.width);
+      const my = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+      for (let i = 0; i < count; i++) {
+        const x = PAD_X + i * COL_W;
+        if (Math.abs(mx - x) < 30 && my < PAD_TOP + 10 && !revealed[i]) {
+          animatePath(i);
+          break;
+        }
+      }
+    });
+
+    // Generate
+    document.getElementById('btn-generate').addEventListener('click', () => {
+      count = Math.max(2, Math.min(10, parseInt(countInput.value) || 4));
+      if (names.length !== count) buildNameInputs();
+
+      generateRungs();
+      paths = [];
+      revealed = [];
+      for (let i = 0; i < count; i++) {
+        paths.push(tracePath(i));
+        revealed.push(false);
+      }
+      ladderGenerated = true;
+      ladderCard.style.display = 'block';
+      hintEl.textContent = '상단 이름을 클릭하면 결과를 확인합니다';
+      drawLadder();
+    });
+
+    // Reveal all
+    document.getElementById('btn-all').addEventListener('click', () => {
+      if (!ladderGenerated) return;
+      let idx = 0;
+      function revealNext() {
+        if (idx >= count) return;
+        if (revealed[idx]) { idx++; revealNext(); return; }
+        animatePath(idx, () => { idx++; setTimeout(revealNext, 300); });
+      }
+      revealNext();
+    });
+
+    // Reset
+    document.getElementById('btn-reset').addEventListener('click', () => {
+      ladderGenerated = false;
+      ladderCard.style.display = 'none';
+      buildNameInputs();
+    });
+
+    countInput.addEventListener('change', buildNameInputs);
+
+    // Init
+    buildNameInputs();
+  })();
+  </script>
+</body>
+</html>
