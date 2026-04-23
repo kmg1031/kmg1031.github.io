@@ -29,6 +29,7 @@ const GAMES = [
   { id: 'tictactoe',    name: 'Tic-Tac-Toe', icon: '❌', path: '../games/tictactoe/index.html' },
   { id: 'wordle',       name: 'Wordle',       icon: '🟩', path: '../games/wordle/index.html' },
   { id: 'flappy',       name: 'Flappy',       icon: '🐦', path: '../games/flappy/index.html' },
+  { id: 'pinball',      name: 'Pinball',      icon: '🎰', path: '../games/pinball/index.html' },
 ];
 
 // ===== 도구 목록 =====
