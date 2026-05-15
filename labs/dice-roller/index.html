@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>주사위 굴리기 – Handshake Labs</title>
+  <link rel="stylesheet" href="../../public/common.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="page-wrap">
+    <h1 class="page-title">🎲 주사위 굴리기</h1>
+    <p class="subtitle">3D 주사위를 굴려보세요</p>
+
+    <div class="dice-area card">
+      <div class="dice-scene">
+        <div class="dice" id="dice">
+          <div class="face face-1">
+            <span class="dot"></span>
+          </div>
+          <div class="face face-2">
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <div class="face face-3">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <div class="face face-4">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <div class="face face-5">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+          <div class="face face-6">
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+            <span class="dot"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="result" id="result"></div>
+
+      <button class="btn btn-primary roll-btn" id="rollBtn">굴리기</button>
+    </div>
+
+    <div class="history card" id="historyCard">
+      <h3 class="history-title">기록</h3>
+      <div class="history-list" id="historyList"></div>
+    </div>
+  </div>
+
+  <script src="../../public/nav.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
