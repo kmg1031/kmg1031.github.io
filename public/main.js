@@ -30,6 +30,7 @@ const GAMES = [
   { id: 'wordle',       name: 'Wordle',       icon: '🟩', path: '../games/wordle/index.html' },
   { id: 'flappy',       name: 'Flappy',       icon: '🐦', path: '../games/flappy/index.html' },
   { id: 'pinball',      name: 'Pinball',      icon: '🎰', path: '../games/pinball/index.html' },
+  { id: 'match3',       name: 'Match-3',      icon: '💎', path: '../games/match3/index.html' },
 ];
 
 // ===== 도구 목록 =====

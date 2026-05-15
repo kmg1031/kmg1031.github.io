@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Match-3 – Handshake Games</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="../../public/nav.js"></script>
+</head>
+<body>
+
+  <div class="game-header">
+    <h1>Match-3</h1>
+    <div class="scores">
+      <div class="score-box">
+        <div class="label">Score</div>
+        <div class="value" id="score">0</div>
+      </div>
+      <div class="score-box">
+        <div class="label">Best</div>
+        <div class="value" id="best">0</div>
+      </div>
+      <div class="score-box">
+        <div class="label">Time</div>
+        <div class="value" id="time">60</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="combo" id="combo"></div>
+    <button class="btn" id="btn-new">New Game</button>
+  </div>
+
+  <div class="board-wrap">
+    <div class="board" id="board"></div>
+
+    <div class="overlay" id="overlay">
+      <h2 id="overlay-title">Time's Up!</h2>
+      <p id="overlay-msg"></p>
+      <button class="btn" id="overlay-retry">다시 시작</button>
+    </div>
+  </div>
+
+  <p class="hint">보석을 클릭한 뒤 인접한 보석을 클릭하여 교환 · 3개 이상 일치 시 제거</p>
+
+  <script src="game.js"></script>
+</body>
+</html>
